@@ -24,6 +24,10 @@ public static class LibraryEndpoints
                 service.GetChildrenAsync(id, query, ct))
             .WithSummary("Subfolders and a page of documents (filter by q, type, year, term, state; sort)");
 
+        folders.MapGet("/{id:guid}/groups", (Guid id, Guid? termId, FolderService service, CancellationToken ct) =>
+                service.GetGroupsAsync(id, termId, ct))
+            .WithSummary("Documents in the folder and below, counted by academic year and type (optionally one term)");
+
         folders.MapPost("", async (CreateFolderRequest request, FolderService service, CancellationToken ct) =>
             {
                 var folder = await service.CreateAsync(request, ct);

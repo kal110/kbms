@@ -24,10 +24,10 @@ import {
   X,
 } from 'lucide-react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
-import { getFolder, getFolderChildren, getFolderTree, getMyFolders, searchDocuments } from '../../api/library'
+import { getFolder, getFolderChildren, getFolderGroups, getFolderTree, getMyFolders, searchDocuments } from '../../api/library'
 import { getOrgTree } from '../../api/org'
 import { getAcademicYears, getActiveTerm } from '../../api/reference'
-import type { DocumentListItem, FolderKind, FolderNode, PersonDto } from '../../api/types'
+import type { DocumentGroup, DocumentListItem, FolderKind, FolderNode, PersonDto } from '../../api/types'
 import { useApi } from '../../api/useApi'
 import { can } from '../../app/navigation'
 import { useMe } from '../../auth/SessionContext'
@@ -39,6 +39,10 @@ import { TypeChip } from '../../components/Chips'
 import { FilterChip } from '../../components/FilterChip'
 import { Modal } from '../../components/Modal'
 import { PageHeader } from '../../components/PageHeader'
+import { Segmented } from '../../components/Segmented'
+import { FolderGroupsView } from './FolderGroupsView'
+import { groupYearsOf, plural } from './folderGroups'
+import type { GroupYear } from './folderGroups'
 import { stateLabel, stateTone } from './libraryUi'
 import styles from './AcademicFoldersPage.module.css'
 
@@ -74,6 +78,9 @@ const kindLabel: Record<FolderKind, string> = {
   Course: 'Course folder',
   Manual: 'Folder',
 }
+
+/** A folder's contents as filed (its subfolders), or regrouped by academic year and type. */
+type GroupBy = 'folders' | 'year'
 
 const byOrder = (a: FolderNode, b: FolderNode) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
 const isPersonKind = (kind: FolderKind) => kind === 'Faculty' || kind === 'Staff'
@@ -184,6 +191,10 @@ export function AcademicFoldersPage() {
   })()
 
   const termFilter = params.get('term') ?? ''
+  const groupBy: GroupBy = params.get('group') === 'year' ? 'year' : 'folders'
+  // By year & type: the year folder open (an id, or "none" for untagged types) and the type folder in it.
+  const yearParam = params.get('year') ?? ''
+  const typeParam = params.get('type') ?? ''
   const filterTerm = termFilter ? termById.get(termFilter) : undefined
   const terms = years.flatMap((y) => y.terms).sort((a, b) => b.startsOn.localeCompare(a.startsOn))
   const requested = params.get('folder') ?? undefined
@@ -199,9 +210,10 @@ export function AcademicFoldersPage() {
   const [infoOpen, setInfoOpen] = useState(false)
   // Opening a folder from a link (e.g. a document's breadcrumb) expands the tree down to it.
   const [expandedFor, setExpandedFor] = useState<string>()
-  if (selectedId && expandedFor !== selectedId) {
-    setExpandedFor(selectedId)
-    setExpanded((prev) => new Set([...prev, ...pathOf(selectedId).map((f) => f.id)]))
+  const expandKey = `${selectedId}|${yearParam}`
+  if (selectedId && expandedFor !== expandKey) {
+    setExpandedFor(expandKey)
+    setExpanded((prev) => new Set([...prev, ...pathOf(selectedId).map((f) => f.id), ...(yearParam ? [`year:${yearParam}`] : [])]))
   }
 
   useEffect(() => {
@@ -231,6 +243,11 @@ export function AcademicFoldersPage() {
       q && scopeId ? searchDocuments({ q, folderId: scopeId, termId: termFilter || undefined, pageSize: 50 }, signal) : Promise.resolve(null),
     [q, scopeId, termFilter],
   )
+  const groups = useApi(
+    (signal) =>
+      groupBy === 'year' && selectedId ? getFolderGroups(selectedId, termFilter || undefined, signal) : Promise.resolve(null),
+    [groupBy, selectedId, termFilter],
+  )
 
   if (manualRequest) return <Navigate to={`/library?folder=${manualRequest.id}`} replace />
   if (base.error && !base.data) {
@@ -252,7 +269,7 @@ export function AcademicFoldersPage() {
 
   const select = (id: string) => {
     setExpanded((prev) => new Set([...prev, ...pathOf(id).map((f) => f.id)]))
-    setParams(termFilter ? { folder: id, term: termFilter } : { folder: id })
+    setParams({ folder: id, ...(termFilter ? { term: termFilter } : {}), ...(groupBy === 'year' ? { group: 'year' } : {}) })
     setQuery('')
     setQ('')
   }
@@ -263,6 +280,37 @@ export function AcademicFoldersPage() {
       else next.delete('term')
       return next
     })
+  const regroup = (value: GroupBy) =>
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('year')
+      next.delete('type')
+      if (value === 'year') next.set('group', 'year')
+      else next.delete('group')
+      return next
+    })
+  /** Opens a year folder, or a type folder in it; with neither, goes back up to the folder itself. */
+  const openGroup = (yearKey?: string, typeId?: string) => {
+    setParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('year')
+      next.delete('type')
+      if (yearKey) next.set('year', yearKey)
+      if (yearKey && typeId) next.set('type', typeId)
+      return next
+    })
+    setQuery('')
+    setQ('')
+  }
+
+  // By year & type, the selected folder holds year folders, each with a folder per type, in place of
+  // its own subfolders. A search lists its matches as usual.
+  const canRegroup = Boolean(selected && kidsOf(selected.id).length > 0) && !q
+  const showGroups = canRegroup && groupBy === 'year'
+  const groupData = showGroups && groups.data?.folderId === selectedId ? groups.data : null
+  const groupYears = groupData ? groupYearsOf(groupData.groups) : []
+  const openYear = groupYears.find((y) => y.key === yearParam)
+  const openType = openYear?.groups.find((g) => g.type.id === typeParam)
   const toggle = (id: string) =>
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -317,10 +365,69 @@ export function AcademicFoldersPage() {
 
   const selectedPath = selected ? pathOf(selected.id) : []
 
+  /** A year folder of "By year & type", under the selected folder. */
+  const renderYearNode = (y: GroupYear, depth: number) => {
+    const key = `year:${y.key}`
+    const open = expanded.has(key)
+    const onPath = openYear?.key === y.key
+    const isSel = onPath && !openType
+    return (
+      <div key={key} className={styles.nodeGroup}>
+        <div className={`${styles.node} ${isSel ? styles.nodeSelected : ''}`}>
+          <span style={{ width: depth * 14 }} className={styles.indent} />
+          <button
+            type="button"
+            className={styles.chevron}
+            aria-label={open ? `Collapse ${y.name}` : `Expand ${y.name}`}
+            onClick={() => toggle(key)}
+          >
+            {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+          <button type="button" className={styles.nodeMain} onClick={() => openGroup(y.key)} aria-current={isSel ? 'true' : undefined}>
+            <Calendar size={16} style={{ color: isSel ? 'var(--primary)' : 'var(--purple-accent)' }} className={styles.nodeIcon} aria-hidden />
+            <span className={`${styles.nodeName} ${onPath ? styles.nodeStrong : ''}`}>{y.name}</span>
+            <span className={styles.flex} />
+            <span className={`${styles.count} ${isSel ? styles.countSelected : ''}`}>{y.documents}</span>
+          </button>
+        </div>
+        {open && y.groups.map((g) => renderTypeNode(y, g, depth + 1))}
+      </div>
+    )
+  }
+
+  /** A type folder of "By year & type", inside a year folder. */
+  const renderTypeNode = (y: GroupYear, g: DocumentGroup, depth: number) => {
+    const isSel = openYear?.key === y.key && openType?.type.id === g.type.id
+    const Icon = isSel ? FolderOpen : FolderIcon
+    return (
+      <div key={g.type.id} className={styles.nodeGroup}>
+        <div className={`${styles.node} ${isSel ? styles.nodeSelected : ''}`}>
+          <span style={{ width: depth * 14 }} className={styles.indent} />
+          <span className={styles.chevronSpace} />
+          <button
+            type="button"
+            className={styles.nodeMain}
+            onClick={() => openGroup(y.key, g.type.id)}
+            aria-current={isSel ? 'true' : undefined}
+          >
+            <Icon size={16} style={{ color: 'var(--primary)' }} className={styles.nodeIcon} aria-hidden />
+            <span className={`${styles.nodeName} ${isSel ? styles.nodeStrong : ''}`}>{g.type.name}</span>
+            <span className={styles.nodeHint}>{g.type.code}</span>
+            <span className={styles.flex} />
+            <span className={`${styles.count} ${isSel ? styles.countSelected : ''}`}>{g.documents}</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const renderNode = (f: FolderNode, depth: number) => {
-    const kids = kidsOf(f.id)
-    const open = expanded.has(f.id) && kids.length > 0
-    const isSel = f.id === selected?.id
+    // By year & type, the selected folder holds year folders in place of its own subfolders.
+    const regrouped = showGroups && f.id === selected?.id
+    const kids = regrouped ? [] : kidsOf(f.id)
+    const hasKids = regrouped ? groupYears.length > 0 : kids.length > 0
+    const open = expanded.has(f.id) && hasKids
+    const isSel = f.id === selected?.id && !openYear
     const onPath = selectedPath.some((p) => p.id === f.id)
     const Icon = f.kind === 'Term' && (isSel || open) ? FolderOpen : kindIcon[f.kind]
     const program = f.kind === 'Program' ? programs.get(f.orgRefId ?? '') : undefined
@@ -329,13 +436,14 @@ export function AcademicFoldersPage() {
       : isPersonKind(f.kind) || f.kind === 'AcademicYear' || f.kind === 'Term' || f.kind === 'Course'
         ? countIn(f.id)
         : undefined
-    const more = program && f.accessible ? Math.max(0, program.facultyCount - kids.filter((k) => k.kind === 'Faculty').length) : 0
+    const more =
+      program && f.accessible && !regrouped ? Math.max(0, program.facultyCount - kids.filter((k) => k.kind === 'Faculty').length) : 0
     const term = f.kind === 'Term' ? termById.get(f.orgRefId ?? '') : undefined
     return (
       <div key={f.id} className={styles.nodeGroup}>
         <div className={`${styles.node} ${isSel ? styles.nodeSelected : ''}`}>
           <span style={{ width: depth * 14 }} className={styles.indent} />
-          {kids.length > 0 ? (
+          {hasKids ? (
             <button
               type="button"
               className={styles.chevron}
@@ -358,7 +466,7 @@ export function AcademicFoldersPage() {
             {count !== undefined && <span className={`${styles.count} ${isSel ? styles.countSelected : ''}`}>{count}</span>}
           </button>
         </div>
-        {open && kids.map((k) => renderNode(k, depth + 1))}
+        {open && (regrouped ? groupYears.map((y) => renderYearNode(y, depth + 1)) : kids.map((k) => renderNode(k, depth + 1)))}
         {open && more > 0 && (
           <div className={styles.more} style={{ paddingLeft: 8 + (depth + 1) * 14 + 20 }}>
             + {more} more faculty
@@ -434,8 +542,25 @@ export function AcademicFoldersPage() {
   const yearDocs = yearFolder?.documentCount ?? 0
   const allowed = detail.data?.folder.id === selected.id ? detail.data.allowedActions : []
   const canManageAccess = allowed.includes('manageAccess')
+  const officeBranch = selectedPath.some((f) => f.kind === 'OfficeRoot' || f.kind === 'Office')
+  const memberWord = officeBranch ? 'staff member' : 'faculty member'
+
+  const groupMapping = () => {
+    const from = person ? `${firstName}'s year and term folders` : `every ${officeBranch ? 'staff' : 'faculty'} folder under ${selected.name}`
+    if (openYear && openType) {
+      const period = openYear.id ? ` for ${openYear.name}` : ''
+      return `Every ${openType.type.name}${period}, from ${from}: ${plural(openType.documents, 'document')} from ${plural(openType.owners, memberWord)}. Each one stays filed in its submitter's folder.`
+    }
+    if (openYear) {
+      return openYear.id
+        ? `Everything submitted for ${openYear.name}, from ${from}, in a folder per document type.`
+        : `Documents whose type has no year or term, from ${from}, in a folder per document type.`
+    }
+    return `The documents from ${from}, in a folder per academic year and then per document type. These folders aren't stored: each document stays filed in its submitter's folder.`
+  }
 
   const mapping = () => {
+    if (showGroups) return groupMapping()
     switch (selected.kind) {
       case 'Course':
         return `Filled automatically. When ${ownerName} submits a per-course type (a syllabus, a lab manual) for ${course?.name ?? 'this course'}, its term documents are filed here, inside ${term?.name ?? 'the term'}.`
@@ -706,30 +831,64 @@ export function AcademicFoldersPage() {
               {selectedPath.map((f, i) => (
                 <span key={f.id}>
                   {i > 0 && <span className={styles.chev}>›</span>}
-                  {f.id !== selected.id && (
-                    <button type="button" onClick={() => select(f.id)}>
+                  {(f.id !== selected.id || openYear) && (
+                    <button type="button" onClick={() => (f.id === selected.id ? openGroup() : select(f.id))}>
                       {f.name}
                     </button>
                   )}
                 </span>
               ))}
+              {openYear && (
+                <span>
+                  <span className={styles.chev}>›</span>
+                  {openType && (
+                    <button type="button" onClick={() => openGroup(openYear.key)}>
+                      {openYear.name}
+                    </button>
+                  )}
+                </span>
+              )}
             </div>
             <div className={styles.titleRow}>
               <FolderOpen size={20} className={styles.titleIcon} aria-hidden />
-              <h2 className={styles.title}>{q ? `Search results in ${scopeName}` : selected.name}</h2>
-              <Badge tone="info">System folder</Badge>
-              {term && (
-                <Badge tone="purple">
-                  Term {term.code} · {year?.name ?? term.academicYearName}
-                </Badge>
+              <h2 className={styles.title}>
+                {q ? `Search results in ${scopeName}` : openType ? openType.type.name : openYear ? openYear.name : selected.name}
+              </h2>
+              {openYear ? (
+                <>
+                  <Badge tone="neutral">{openType ? 'Type folder' : 'Year folder'} · by year & type</Badge>
+                  {openType && <TypeChip label={`${openType.type.name} · ${openType.type.code}`} />}
+                  {openType && openYear.id && <Badge tone="purple">{openYear.name}</Badge>}
+                </>
+              ) : (
+                <>
+                  <Badge tone="info">System folder</Badge>
+                  {term && (
+                    <Badge tone="purple">
+                      Term {term.code} · {year?.name ?? term.academicYearName}
+                    </Badge>
+                  )}
+                  {selected.kind === 'AcademicYear' && year && <Badge tone="purple">{year.name}</Badge>}
+                </>
               )}
-              {selected.kind === 'AcademicYear' && year && <Badge tone="purple">{year.name}</Badge>}
               {filterTerm && <Badge tone="warning">Showing {filterLabel} only</Badge>}
               <span className={styles.flex} />
               {person && (
                 <span className={styles.owner}>
                   Owner: {person.name} · {ownerRole}
                 </span>
+              )}
+              {canRegroup && (
+                <Segmented<GroupBy>
+                  size="sm"
+                  ariaLabel="Group documents"
+                  value={groupBy}
+                  onChange={regroup}
+                  options={[
+                    { value: 'folders', label: person ? 'By folder' : officeBranch ? 'By staff' : 'By faculty' },
+                    { value: 'year', label: 'By year & type' },
+                  ]}
+                />
               )}
             </div>
             <div className={styles.mapping}>
@@ -745,87 +904,108 @@ export function AcademicFoldersPage() {
               <span>Number</span>
               <span>Status</span>
             </div>
-            {!q &&
-              !filterTerm &&
-              subfolders.map((f) => {
-                const Icon = kindIcon[f.kind]
-                return (
-                  <button key={f.id} type="button" className={`${styles.docRow} ${styles.folderRow}`} onClick={() => select(f.id)}>
-                    <span className={styles.docCell}>
-                      <Icon size={16} style={{ color: iconColor(f, false) }} aria-hidden />
-                      <span className={styles.docText}>
-                        <strong>{f.name}</strong>
-                        <span>
-                          {kindLabel[f.kind]}
-                          {f.accessible && !isAdmin ? ` · ${countIn(f.id)} documents` : ''}
-                        </span>
-                      </span>
-                    </span>
-                    <span className={styles.subtle}>—</span>
-                    <span className={styles.subtle}>—</span>
-                    <span>{chipFor(f)}</span>
-                  </button>
-                )
-              })}
-            {rowsError ? (
-              <ErrorState error={rowsError} onRetry={q ? search.reload : contents.reload} compact />
-            ) : rowsLoading ? (
-              <Loading label={q ? 'Searching…' : 'Loading documents…'} compact />
+            {showGroups ? (
+              <FolderGroupsView
+                folderId={selected.id}
+                data={groupData}
+                error={groups.error}
+                onRetry={groups.reload}
+                years={groupYears}
+                year={openYear}
+                type={openType}
+                termId={termFilter}
+                termLabel={filterLabel}
+                memberWord={memberWord}
+                isAdmin={isAdmin}
+                onOpenYear={(key) => openGroup(key)}
+                onOpenType={(key, typeId) => openGroup(key, typeId)}
+                onOpenDocument={(id) => navigate(`/documents/${id}`)}
+              />
             ) : (
-              rows.map((d) => {
-                const where =
-                  q || (filterTerm && d.folder.id !== selected.id)
-                    ? pathOf(d.folder.id)
-                        .slice(-3)
-                        .map((f) => f.name)
-                        .join(' › ') || d.folder.name
-                    : ''
-                return (
-                  <div key={d.id} className={`${styles.docRow} ${styles.docBody}`} onClick={() => navigate(`/documents/${d.id}`)}>
-                    <span className={styles.docCell}>
-                      <FileText size={16} className={styles.fileIcon} aria-hidden />
-                      <span className={styles.docText}>
-                        <strong>{d.title}</strong>
-                        <span>
-                          {d.currentVersion ? `${d.currentVersion.fileName} · v${d.currentVersion.number}` : 'No file yet'}
-                          {where ? ` · ${where}` : ''}
+              <>
+                {!q &&
+                  !filterTerm &&
+                  subfolders.map((f) => {
+                    const Icon = kindIcon[f.kind]
+                    return (
+                      <button key={f.id} type="button" className={`${styles.docRow} ${styles.folderRow}`} onClick={() => select(f.id)}>
+                        <span className={styles.docCell}>
+                          <Icon size={16} style={{ color: iconColor(f, false) }} aria-hidden />
+                          <span className={styles.docText}>
+                            <strong>{f.name}</strong>
+                            <span>
+                              {kindLabel[f.kind]}
+                              {f.accessible && !isAdmin ? ` · ${countIn(f.id)} documents` : ''}
+                            </span>
+                          </span>
                         </span>
-                      </span>
-                    </span>
-                    <span>
-                      <TypeChip label={`${d.type.name} · ${d.type.code}`} />
-                    </span>
-                    <span className={styles.number}>{d.documentNumber ?? '—'}</span>
-                    <span>
-                      <Badge tone={stateTone[d.state]}>{stateLabel[d.state]}</Badge>
-                    </span>
+                        <span className={styles.subtle}>—</span>
+                        <span className={styles.subtle}>—</span>
+                        <span>{chipFor(f)}</span>
+                      </button>
+                    )
+                  })}
+                {rowsError ? (
+                  <ErrorState error={rowsError} onRetry={q ? search.reload : contents.reload} compact />
+                ) : rowsLoading ? (
+                  <Loading label={q ? 'Searching…' : 'Loading documents…'} compact />
+                ) : (
+                  rows.map((d) => {
+                    const where =
+                      q || (filterTerm && d.folder.id !== selected.id)
+                        ? pathOf(d.folder.id)
+                            .slice(-3)
+                            .map((f) => f.name)
+                            .join(' › ') || d.folder.name
+                        : ''
+                    return (
+                      <div key={d.id} className={`${styles.docRow} ${styles.docBody}`} onClick={() => navigate(`/documents/${d.id}`)}>
+                        <span className={styles.docCell}>
+                          <FileText size={16} className={styles.fileIcon} aria-hidden />
+                          <span className={styles.docText}>
+                            <strong>{d.title}</strong>
+                            <span>
+                              {d.currentVersion ? `${d.currentVersion.fileName} · v${d.currentVersion.number}` : 'No file yet'}
+                              {where ? ` · ${where}` : ''}
+                            </span>
+                          </span>
+                        </span>
+                        <span>
+                          <TypeChip label={`${d.type.name} · ${d.type.code}`} />
+                        </span>
+                        <span className={styles.number}>{d.documentNumber ?? '—'}</span>
+                        <span>
+                          <Badge tone={stateTone[d.state]}>{stateLabel[d.state]}</Badge>
+                        </span>
+                      </div>
+                    )
+                  })
+                )}
+                {!rowsLoading && !rowsError && rows.length === 0 && (q || filterTerm || subfolders.length === 0) && (
+                  <div className={styles.empty}>
+                    {q
+                      ? `No documents in ${scopeName} match “${query.trim()}”.`
+                      : isAdmin
+                        ? 'Documents are hidden: admins can repair access but not view content.'
+                        : pathOnlySelected
+                          ? 'Nothing to list here for you.'
+                          : filterTerm
+                            ? `No documents tagged ${filterLabel} here or in the folders below.`
+                            : 'No documents in this folder yet.'}
                   </div>
-                )
-              })
+                )}
+                <div className={styles.docFooter}>
+                  <Info size={14} aria-hidden />
+                  <span>
+                    {q
+                      ? `${hits?.total ?? 0} result${hits?.total === 1 ? '' : 's'} in ${scopeName}${hits && hits.total > rows.length ? ` (showing ${rows.length})` : ''}.`
+                      : rowsLoading
+                        ? 'Loading…'
+                        : footer()}
+                  </span>
+                </div>
+              </>
             )}
-            {!rowsLoading && !rowsError && rows.length === 0 && (q || filterTerm || subfolders.length === 0) && (
-              <div className={styles.empty}>
-                {q
-                  ? `No documents in ${scopeName} match “${query.trim()}”.`
-                  : isAdmin
-                    ? 'Documents are hidden: admins can repair access but not view content.'
-                    : pathOnlySelected
-                      ? 'Nothing to list here for you.'
-                      : filterTerm
-                        ? `No documents tagged ${filterLabel} here or in the folders below.`
-                        : 'No documents in this folder yet.'}
-              </div>
-            )}
-            <div className={styles.docFooter}>
-              <Info size={14} aria-hidden />
-              <span>
-                {q
-                  ? `${hits?.total ?? 0} result${hits?.total === 1 ? '' : 's'} in ${scopeName}${hits && hits.total > rows.length ? ` (showing ${rows.length})` : ''}.`
-                  : rowsLoading
-                    ? 'Loading…'
-                    : footer()}
-              </span>
-            </div>
           </section>
 
           <div className={styles.bottom}>

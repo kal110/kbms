@@ -6,6 +6,7 @@ import type {
   DocumentState,
   FolderContents,
   FolderDetail,
+  FolderGroups,
   FolderNode,
   OrgFolderSyncResult,
   RestoreVersionRequest,
@@ -55,6 +56,10 @@ export const getFolder = (id: string, signal?: AbortSignal) => api.get<FolderDet
 
 export const getFolderChildren = (id: string, query: DocumentListQuery = {}, signal?: AbortSignal) =>
   api.get<FolderContents>(`/folders/${id}/children`, { query: { ...query }, signal })
+
+/** Documents in the folder and below, counted by academic year and type (one term with termId). */
+export const getFolderGroups = (id: string, termId?: string, signal?: AbortSignal) =>
+  api.get<FolderGroups>(`/folders/${id}/groups`, { query: { termId }, signal })
 
 export const createFolder = (body: CreateFolderRequest) => api.post<FolderDetail>('/folders', body)
 

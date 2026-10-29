@@ -2869,6 +2869,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/folders/{id}/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Documents in the folder and below, counted by academic year and type (optionally one term) */
+        get: {
+            parameters: {
+                query?: {
+                    termId?: string;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FolderGroups"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/folders": {
         parameters: {
             query?: never;
@@ -5407,6 +5447,19 @@ export interface components {
             updatedAt: string;
             eTag: string;
         };
+        DocumentGroup: {
+            /** Format: uuid */
+            academicYearId: null | string;
+            academicYearCode: null | string;
+            academicYearName: null | string;
+            type: components["schemas"]["DocumentTypeRef"];
+            /** Format: int32 */
+            documents: number;
+            /** Format: int32 */
+            owners: number;
+            /** Format: date-time */
+            lastUpdatedAt: string;
+        };
         DocumentListItem: {
             /** Format: uuid */
             id: string;
@@ -5517,6 +5570,13 @@ export interface components {
             org: null | components["schemas"]["OrgRef"];
             context: null | string;
             allowedActions: string[];
+        };
+        FolderGroups: {
+            /** Format: uuid */
+            folderId: string;
+            /** Format: int32 */
+            total: number;
+            groups: components["schemas"]["DocumentGroup"][];
         };
         /** @enum {unknown} */
         FolderKind: "Manual" | "AcademicRoot" | "College" | "Department" | "Program" | "Faculty" | "OfficeRoot" | "Office" | "Staff" | "AcademicYear" | "Term" | "Course";

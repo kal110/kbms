@@ -77,6 +77,46 @@ public sealed class FolderService(
         return new FolderContents(nodes[0], nodes.Skip(1).ToList(), page);
     }
 
+    /// <summary>
+    /// The visible documents in a folder and below, counted by academic year and type: a unit's
+    /// documents by what was submitted for which year, instead of by whose folder they are in.
+    /// List a group with the children endpoint (includeSubfolders, yearId, typeId).
+    /// </summary>
+    public async Task<FolderGroups> GetGroupsAsync(Guid id, Guid? termId, CancellationToken ct = default)
+    {
+        var me = await currentUser.GetAsync(ct);
+        var (folder, _) = await RequireNavigableAsync(me, id, ct);
+        var docs = access.VisibleDocuments(me).AsNoTracking().Where(d => d.Folder.Path.StartsWith(folder.Path));
+        if (termId is { } term) docs = docs.Where(d => d.AcademicTermId == term);
+
+        var counts = await docs
+            .GroupBy(d => new { d.AcademicYearId, d.DocumentTypeId })
+            .Select(g => new
+            {
+                g.Key.AcademicYearId,
+                g.Key.DocumentTypeId,
+                Documents = g.Count(),
+                Owners = g.Select(d => d.OwnerUserId).Distinct().Count(),
+                LastUpdatedAt = g.Max(d => d.UpdatedAt),
+            })
+            .ToListAsync(ct);
+
+        var yearIds = counts.Select(c => c.AcademicYearId).OfType<Guid>().Distinct().ToArray();
+        var typeIds = counts.Select(c => c.DocumentTypeId).Distinct().ToArray();
+        var years = await db.AcademicYears.AsNoTracking().Where(y => yearIds.Contains(y.Id)).ToDictionaryAsync(y => y.Id, ct);
+        var types = await db.DocumentTypes.AsNoTracking().Where(t => typeIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id, t => new DocumentTypeRef(t.Id, t.Code, t.Name, t.AcademicTag), ct);
+
+        var groups = counts
+            .Select(c => (Year: c.AcademicYearId is { } y ? years[y] : null, Type: types[c.DocumentTypeId], Count: c))
+            .OrderByDescending(g => g.Year?.StartsOn ?? DateOnly.MinValue)
+            .ThenBy(g => g.Type.Name)
+            .Select(g => new DocumentGroup(g.Year?.Id, g.Year?.Code, g.Year?.Name, g.Type,
+                g.Count.Documents, g.Count.Owners, g.Count.LastUpdatedAt))
+            .ToList();
+        return new FolderGroups(id, groups.Sum(g => g.Documents), groups);
+    }
+
     /// <summary>The caller's own faculty and staff folders (one per program or office).</summary>
     public async Task<IReadOnlyList<FolderNode>> GetMineAsync(CancellationToken ct = default)
     {

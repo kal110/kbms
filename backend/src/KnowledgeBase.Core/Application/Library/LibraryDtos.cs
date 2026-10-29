@@ -171,6 +171,23 @@ public sealed record FolderDetail(
 
 public sealed record FolderContents(FolderNode Folder, IReadOnlyList<FolderNode> Folders, PagedResult<DocumentListItem> Documents);
 
+/// <summary>
+/// The visible documents in a folder and below that share an academic year (none for untagged
+/// types) and a type. Grouping doesn't move anything: each document stays in its submitter's folder.
+/// </summary>
+/// <param name="Owners">How many people the documents belong to.</param>
+public sealed record DocumentGroup(
+    Guid? AcademicYearId,
+    string? AcademicYearCode,
+    string? AcademicYearName,
+    DocumentTypeRef Type,
+    int Documents,
+    int Owners,
+    DateTimeOffset LastUpdatedAt);
+
+/// <param name="Groups">Newest academic year first, then by type name; untagged types last.</param>
+public sealed record FolderGroups(Guid FolderId, int Total, IReadOnlyList<DocumentGroup> Groups);
+
 public sealed record CreateFolderRequest(Guid? ParentId, string Name, bool? InheritPermissions, bool? IsRestricted);
 
 /// <summary>Rename, move (to another parent) or mark restricted. Only the fields present change.</summary>
