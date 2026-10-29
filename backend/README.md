@@ -81,11 +81,17 @@ local model take far longer.
 ### On a server (Dokploy)
 
 Deploy `../compose.yaml` as a Docker Compose service, and paste `../dokploy.env.example`, with its
-secrets and domains filled in, into the Environment tab. Its header lists the Dokploy settings:
-Isolated Deployments, and HTTPS domains for `web` (port 80) and `s3` (port 9000). Browsers upload
-straight to S3, so `KBMS_S3_PUBLIC_URL` must be a public address. The other ports stay on loopback
-(`KBMS_BIND_ADDRESS=127.0.0.1`). Until the university IdP is configured, the server runs the demo
-sign-in, so anyone who can reach it can sign in as any account; keep it private.
+secrets and the server's LAN address filled in, into the Environment tab. Its header lists the
+Dokploy settings. There is no domain: people open `http://<server address>:25480`, and Dokploy's
+Traefik isn't involved. Browsers upload and download straight to S3, so the server publishes the site
+(25480) and S3 (25490) on the LAN (`KBMS_BIND_ADDRESS=0.0.0.0`), and `KBMS_WEB_URL` and
+`KBMS_S3_PUBLIC_URL` carry that address. PostgreSQL and the RustFS console stay on the server
+(`KBMS_ADMIN_BIND_ADDRESS=127.0.0.1`). The template also notes the domain-and-HTTPS variant for
+later. Until the university IdP is configured, the server runs the demo sign-in, so anyone who can
+reach it can sign in as any account; limit who reaches those two ports.
+
+Opened by an IP address over plain HTTP, the page isn't a secure context, so browser APIs that need
+HTTPS (such as `crypto.randomUUID`) are missing; the web app must not depend on them.
 
 ### Signing in during development
 

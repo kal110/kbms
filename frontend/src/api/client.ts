@@ -82,6 +82,13 @@ export function toQueryString(query?: Query) {
 
 const formatIfMatch = (value: string | number) => (typeof value === 'number' ? `"${value}"` : value)
 
+// crypto.randomUUID only exists in a secure context (HTTPS or localhost); a server opened by its LAN
+// address over plain HTTP isn't one. getRandomValues works everywhere.
+const newIdempotencyKey = () =>
+  typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+
 /**
  * Sends a request with the active account's token and the API's headers, and throws ApiError for an
  * error response. The caller reads the body: JSON in `request`, an event stream for the assistant.
@@ -94,7 +101,7 @@ export async function send(method: string, path: string, options: RequestOptions
   if (options.body !== undefined) headers.set('Content-Type', 'application/json')
   if (options.ifMatch !== undefined && options.ifMatch !== null) headers.set('If-Match', formatIfMatch(options.ifMatch))
   if (options.idempotencyKey) {
-    headers.set('Idempotency-Key', options.idempotencyKey === true ? crypto.randomUUID() : options.idempotencyKey)
+    headers.set('Idempotency-Key', options.idempotencyKey === true ? newIdempotencyKey() : options.idempotencyKey)
   }
 
   let response: Response

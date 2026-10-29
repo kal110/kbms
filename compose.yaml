@@ -28,7 +28,9 @@ services:
       POSTGRES_PASSWORD: ${KBMS_DB_PASSWORD:-kbms-dev-password}
     ports:
       # Host ports are in a 254xx block (none of the usual defaults), so local installs keep theirs.
-      - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_DB_PORT:-25432}:5432"
+      # Only admins use this one, so it can stay on the server (KBMS_ADMIN_BIND_ADDRESS=127.0.0.1)
+      # while web and s3 are on the LAN.
+      - "${KBMS_ADMIN_BIND_ADDRESS:-${KBMS_BIND_ADDRESS:-0.0.0.0}}:${KBMS_DB_PORT:-25432}:5432"
     volumes:
       # PostgreSQL 18 images keep data in a version folder under /var/lib/postgresql.
       - db-data:/var/lib/postgresql
@@ -52,7 +54,7 @@ services:
       RUSTFS_CORS_ALLOWED_ORIGINS: ${KBMS_WEB_URL:-http://localhost:${KBMS_WEB_PORT:-25480}},http://localhost:5173,http://localhost:5174
     ports:
       - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_S3_PORT:-25490}:9000"
-      - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_S3_CONSOLE_PORT:-25491}:9001"
+      - "${KBMS_ADMIN_BIND_ADDRESS:-${KBMS_BIND_ADDRESS:-0.0.0.0}}:${KBMS_S3_CONSOLE_PORT:-25491}:9001"
     volumes:
       - s3-data:/data
     healthcheck:
@@ -96,7 +98,8 @@ services:
       retries: 12
 
   # One-shot: downloads the embedding model, and the answer model unless Claude answers, into the
-  # ollama volume (a no-op once they are there).
+  # ollama volume. A model already there is left as it is, so this needs no internet once they are
+  # (or once the volume is copied in, lan.env.example), and bge-m3 never changes under a built index.
   ollama-pull:
     image: ollama/ollama:0.40.4
     depends_on:
@@ -111,10 +114,11 @@ services:
       - /bin/sh
       - -c
       - |
-        ollama pull "$$EMBEDDING_MODEL" || exit 1
+        have() { ollama show "$$1" > /dev/null 2>&1; }
+        have "$$EMBEDDING_MODEL" || ollama pull "$$EMBEDDING_MODEL" || exit 1
         case "$$CHAT_PROVIDER" in
           [Aa]nthropic) ;;
-          *) ollama pull "$$CHAT_MODEL" ;;
+          *) have "$$CHAT_MODEL" || ollama pull "$$CHAT_MODEL" ;;
         esac
     restart: "no"
 
