@@ -23,7 +23,9 @@ const isOrgRoot = (folder: FolderNode) => folder.kind === 'AcademicRoot' || fold
 /** Restricted, or a subfolder that stopped inheriting its parent's access (top-level folders have nothing to inherit). */
 const isLocked = (folder: FolderNode) => folder.isRestricted || (Boolean(folder.parentId) && !folder.inheritPermissions)
 
-const byOrder = (a: FolderNode, b: FolderNode) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
+/** The org roots (Colleges, then Non-academic departments) lead the list; the library's own folders follow. */
+const byOrder = (a: FolderNode, b: FolderNode) =>
+  Number(isOrgRoot(b)) - Number(isOrgRoot(a)) || a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
 
 /** Left-hand folder tree of the Library and Folder access screens (frames 1 and 13). */
 export function FolderTree({
