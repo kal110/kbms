@@ -123,6 +123,114 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                     b.ToTable("folder_effective_access", (string)null);
                 });
 
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Assistant.Conversation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<int>("TurnCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("turn_count");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversations");
+
+                    b.HasIndex("UserId", "UpdatedAt")
+                        .HasDatabaseName("ix_conversations_user_id_updated_at");
+
+                    b.ToTable("conversations", (string)null);
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Assistant.ConversationTurn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Answer")
+                        .HasColumnType("text")
+                        .HasColumnName("answer");
+
+                    b.Property<DateTimeOffset?>("AnsweredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("answered_at");
+
+                    b.Property<DateTimeOffset>("AskedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("asked_at");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("conversation_id");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("error");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("model");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer")
+                        .HasColumnName("number");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("outcome");
+
+                    b.Property<Guid?>("QueryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("query_id");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("question");
+
+                    b.Property<string>("Scope")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("scope");
+
+                    b.Property<JsonDocument>("Sources")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sources");
+
+                    b.HasKey("Id")
+                        .HasName("pk_conversation_turns");
+
+                    b.HasIndex("ConversationId", "Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_conversation_turns_conversation_id_number");
+
+                    b.ToTable("conversation_turns", (string)null);
+                });
+
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Audit.AiQueryAudit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1114,6 +1222,33 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                     b.ToTable("upload_sessions", (string)null);
                 });
 
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Library.VersionPage", b =>
+                {
+                    b.Property<Guid>("VersionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("version_id");
+
+                    b.Property<int>("PageNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("page_number");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.HasKey("VersionId", "PageNumber")
+                        .HasName("pk_version_pages");
+
+                    b.HasIndex("Text")
+                        .HasDatabaseName("ix_version_pages_text_trgm");
+
+                    NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Text"), "GIN");
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Text"), new[] { "gin_trgm_ops" });
+
+                    b.ToTable("version_pages", (string)null);
+                });
+
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Org.AcademicProgram", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1581,6 +1716,44 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_users_external_id");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Org.UserCredential", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<int>("FailedSignIns")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_sign_ins");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
+
+                    b.Property<bool>("MustChangePassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("must_change_password");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<DateTimeOffset>("SessionsValidFrom")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sessions_valid_from");
+
+                    b.HasKey("UserId")
+                        .HasName("pk_user_credentials");
+
+                    b.ToTable("user_credentials", (string)null);
                 });
 
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Processing.IdempotencyRecord", b =>
@@ -2438,6 +2611,26 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_folder_effective_access_folders_folder_id");
                 });
 
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Assistant.Conversation", b =>
+                {
+                    b.HasOne("KnowledgeBase.Core.Domain.Org.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_conversations_users_user_id");
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Assistant.ConversationTurn", b =>
+                {
+                    b.HasOne("KnowledgeBase.Core.Domain.Assistant.Conversation", null)
+                        .WithMany("Turns")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_conversation_turns_conversations_conversation_id");
+                });
+
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Calendar.AcademicTerm", b =>
                 {
                     b.HasOne("KnowledgeBase.Core.Domain.Calendar.AcademicYear", "AcademicYear")
@@ -2637,6 +2830,16 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_publication_records_document_versions_document_version_id");
                 });
 
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Library.VersionPage", b =>
+                {
+                    b.HasOne("KnowledgeBase.Core.Domain.Library.DocumentVersion", null)
+                        .WithMany()
+                        .HasForeignKey("VersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_version_pages_document_versions_version_id");
+                });
+
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Org.AcademicProgram", b =>
                 {
                     b.HasOne("KnowledgeBase.Core.Domain.Org.Department", "Department")
@@ -2794,6 +2997,18 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_teaching_load_imports_users_imported_by_user_id");
 
                     b.Navigation("ImportedBy");
+                });
+
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Org.UserCredential", b =>
+                {
+                    b.HasOne("KnowledgeBase.Core.Domain.Org.User", "User")
+                        .WithOne("Credential")
+                        .HasForeignKey("KnowledgeBase.Core.Domain.Org.UserCredential", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_credentials_users_user_id");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Processing.ProcessingJob", b =>
@@ -3018,6 +3233,11 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
                     b.Navigation("RequirementSet");
                 });
 
+            modelBuilder.Entity("KnowledgeBase.Core.Domain.Assistant.Conversation", b =>
+                {
+                    b.Navigation("Turns");
+                });
+
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Calendar.AcademicYear", b =>
                 {
                     b.Navigation("Terms");
@@ -3064,6 +3284,8 @@ namespace KnowledgeBase.Core.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("KnowledgeBase.Core.Domain.Org.User", b =>
                 {
+                    b.Navigation("Credential");
+
                     b.Navigation("Groups");
 
                     b.Navigation("Programs");

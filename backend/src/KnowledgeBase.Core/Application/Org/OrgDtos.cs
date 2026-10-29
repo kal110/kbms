@@ -34,7 +34,8 @@ public sealed record MeDto(
     IReadOnlyList<RoleDto> Roles,
     IReadOnlyList<ProgramMembershipDto> Programs,
     IReadOnlyList<StaffMembershipDto> Departments,
-    IReadOnlyList<string> Capabilities);
+    IReadOnlyList<string> Capabilities,
+    bool HasPassword);
 
 public sealed record OrgProgramDto(Guid Id, string Code, string Name, Guid DepartmentId, PersonDto? Supervisor, int FacultyCount);
 
@@ -124,7 +125,17 @@ public sealed record UserAdminDto(
     IReadOnlyList<RoleDto> Roles,
     IReadOnlyList<ProgramMembershipDto> Programs,
     IReadOnlyList<StaffMembershipDto> Departments,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    UserPasswordDto? Password);
+
+/// <summary>
+/// Their password for signing in to KBMS (no identity provider); null when none is set. MustChange:
+/// a temporary one, replaced at the next sign-in. LockedUntil: locked after wrong passwords.
+/// </summary>
+public sealed record UserPasswordDto(bool MustChange, DateTimeOffset? LockedUntil, DateTimeOffset ChangedAt);
+
+/// <summary>MustChange makes it a temporary password the person replaces at their next sign-in.</summary>
+public sealed record SetPasswordRequest(string Password, bool MustChange);
 
 /// <summary>What a user holds, for the list filter. None = no role and no program or department.</summary>
 public enum UserRoleFilter

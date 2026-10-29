@@ -1,0 +1,76 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 13px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--primary);
+}
+
+.input:disabled {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.invalid,
+.invalid:focus {
+  border-color: var(--danger);
+}
+
+.withToggle {
+  position: relative;
+  display: block;
+}
+
+.withToggle .input {
+  padding-right: 38px;
+}
+
+.toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-subtle);
+  transform: translateY(-50%);
+}
+
+.toggle:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.help {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--danger);
+}

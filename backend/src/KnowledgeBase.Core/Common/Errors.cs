@@ -35,6 +35,10 @@ public sealed class ValidationAppException(IDictionary<string, string[]> errors)
 public sealed class UnauthenticatedException(string? detail = null)
     : AppException("unauthenticated", "Sign in to continue.", 401, detail);
 
+/// <summary>401 or 429 from password sign-in: a wrong sign-in id or password, or locked after too many.</summary>
+public sealed class SignInException(string code, string title, int status, string? detail = null)
+    : AppException(code, title, status, detail);
+
 /// <summary>403 — the caller can see the resource but the policy forbids the action.</summary>
 public sealed class ForbiddenException(string? detail = null)
     : AppException("forbidden", "You don't have permission to do this.", 403, detail);

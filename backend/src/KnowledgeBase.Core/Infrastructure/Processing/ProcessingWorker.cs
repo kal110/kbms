@@ -75,6 +75,7 @@ public sealed class ProcessingWorker(
         try
         {
             var result = await processor.RunAsync(version, stage => job.Stage = stage, ct);
+            if (result.Pages is { } pages) await VersionPages.ReplaceAsync(db, version.Id, pages, ct);
             version.PageCount = result.PageCount ?? version.PageCount;
             version.TextObjectKey = result.TextObjectKey ?? version.TextObjectKey;
             // Ready = processed; Indexed = also searchable. A deferred index write leaves it Ready

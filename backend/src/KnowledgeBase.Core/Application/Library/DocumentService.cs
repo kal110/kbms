@@ -203,6 +203,27 @@ public sealed class DocumentService(
         return new ContentLink(url.Url, url.ExpiresAt, version.Id, version.VersionNumber, version.OriginalFilename, inline);
     }
 
+    /// <summary>
+    /// One page of a version's extracted text, for previewing a file the browser can't draw (Word,
+    /// plain text). Needs View, like the inline preview, and is audited the same way.
+    /// </summary>
+    public async Task<VersionPageText> GetPageTextAsync(Guid id, Guid versionId, int page, CancellationToken ct = default)
+    {
+        await RequireAsync(id, AccessLevel.View, ct);
+        var version = await db.DocumentVersions.AsNoTracking().Where(v => v.Id == versionId && v.DocumentId == id)
+            .Select(v => new { v.Id, v.VersionNumber }).SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Version", versionId);
+        var pages = await db.VersionPages.CountAsync(p => p.VersionId == versionId, ct);
+        if (pages == 0) throw new ConflictException("no-text", "This version's text isn't ready.", "It is read when the file is processed.");
+        var text = await db.VersionPages.AsNoTracking().Where(p => p.VersionId == versionId && p.PageNumber == page)
+            .Select(p => p.Text).SingleOrDefaultAsync(ct)
+            ?? throw new NotFoundException("Page", page);
+
+        audit.Record("document.previewed", "document", id, version.Id, new { versionNumber = version.VersionNumber, page, text = true });
+        await db.SaveChangesAsync(ct);
+        return new VersionPageText(version.Id, version.VersionNumber, page, pages, text);
+    }
+
     public async Task<DocumentDetail> ArchiveAsync(Guid id, uint? ifMatch, CancellationToken ct = default)
     {
         var (me, level) = await RequireAsync(id, AccessLevel.Edit, ct);

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Xml;
+using KnowledgeBase.Core.Common;
 using UglyToad.PdfPig;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
@@ -32,6 +33,8 @@ public sealed record PageBlock(BlockKind Kind, string Text, int Level = 0);
 /// <param name="NeedsOcr">Little or no text but images: a scan, flagged for OCR (frame 8, step 7).</param>
 public sealed record ExtractedPage(int Number, IReadOnlyList<PageBlock> Blocks, int Chars, bool HasImages, bool NeedsOcr);
 
+public sealed record PageText(int Number, string Text);
+
 public sealed record ExtractedText(string Extractor, IReadOnlyList<ExtractedPage> Pages)
 {
     public int Chars => Pages.Sum(p => p.Chars);
@@ -50,6 +53,10 @@ public sealed record ExtractedText(string Extractor, IReadOnlyList<ExtractedPage
         foreach (var page in Pages) sb.Append(JsonSerializer.Serialize(page, Json)).Append('\n');
         return Encoding.UTF8.GetBytes(sb.ToString());
     }
+
+    /// <summary>Every page as one line of plain text, for exact search (empty pages included).</summary>
+    public IReadOnlyList<PageText> PlainPages() =>
+        Pages.Select(p => new PageText(p.Number, PlainText.Collapse(string.Join(' ', p.Blocks.Select(b => b.Text))))).ToList();
 
     public static ExtractedText FromJsonLines(string text)
     {

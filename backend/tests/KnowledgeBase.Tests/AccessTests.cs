@@ -201,4 +201,20 @@ public class AccessQueryTests
         Assert.Contains("ts_rank", sql);
         Assert.Contains("similarity", sql);
     }
+
+    [Fact]
+    public void Exact_search_translates()
+    {
+        using var db = ModelTests.NewContext();
+        var docs = new AccessEvaluator(db, TimeProvider.System).VisibleDocuments(Jamie);
+
+        var sql = SearchService.ExactMatching(db, docs, "late enrollment fee").ToQueryString();
+        var pages = SearchService.PhrasePagesOf(db, [Guid.NewGuid()], "late enrollment fee").ToQueryString();
+
+        Assert.Contains("version_pages", sql);
+        Assert.Contains("ILIKE", sql);
+        Assert.Contains("current_version_id", sql);
+        Assert.Contains("GROUP BY", pages);
+        Assert.Contains("min(", pages);
+    }
 }

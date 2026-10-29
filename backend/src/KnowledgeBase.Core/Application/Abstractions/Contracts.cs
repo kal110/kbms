@@ -121,6 +121,24 @@ public interface IRequirementResolver
     Task<EffectiveChecklist> GetPinnedChecklistAsync(IReadOnlyList<Guid> requirementSetIds, CancellationToken ct = default);
 }
 
+/// <summary>The UI filters a search by meaning narrows its candidates with; PostgreSQL re-checks every filter.</summary>
+public sealed record SemanticFilter(Guid? FolderId, Guid? DocumentTypeId, Guid? AcademicYearId, Guid? AcademicTermId);
+
+/// <summary>A document whose current version has a passage close in meaning to the query: its best one.</summary>
+/// <param name="Score">Dense cosine similarity of that passage.</param>
+public sealed record SemanticMatch(Guid DocumentId, Guid VersionId, double Score, int Page, string? Section, string Snippet);
+
+/// <param name="Ran">The search by meaning ran (AI on, index ready, services up).</param>
+/// <param name="Problem">Why it didn't run although AI is on; null when it ran or AI is off.</param>
+public sealed record SemanticMatches(bool Ran, string? Problem, IReadOnlyList<SemanticMatch> Matches);
+
+/// <summary>Search by meaning over the current version of every document the caller may see (AI module, frames 5, 10).</summary>
+public interface ISemanticSearch
+{
+    /// <summary>Best match per document, best first. An unavailable service is reported, not thrown, so callers can fall back to keywords.</summary>
+    Task<SemanticMatches> FindDocumentsAsync(UserContext user, string query, SemanticFilter filter, CancellationToken ct = default);
+}
+
 /// <summary>Queues a stored version for Extract → OCR → Chunk → Embed → Index (Admin/Processing module).</summary>
 public interface IProcessingPipeline
 {

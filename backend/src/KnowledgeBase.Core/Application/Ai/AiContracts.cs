@@ -103,6 +103,12 @@ public enum ChatProvider
 public sealed class ChatOptions
 {
     public ChatProvider Provider { get; set; } = ChatProvider.Local;
+
+    /// <summary>
+    /// Earlier questions and answers of the conversation sent along with a new question, so a
+    /// follow-up ("and for the second term?") makes sense. 0 = every question stands alone.
+    /// </summary>
+    public int HistoryTurns { get; set; } = 3;
     public LocalChatOptions Local { get; set; } = new();
     public AnthropicChatOptions Anthropic { get; set; } = new();
 
@@ -190,6 +196,12 @@ public static class KnowledgeScopes
 
     /// <summary>The caller's own unpublished current versions (private draft help).</summary>
     public const string MyDrafts = "my-drafts";
+
+    /// <summary>
+    /// The current version of every document the caller can open, whatever its state: what the
+    /// library lists, for its search by meaning. Not offered to the assistant.
+    /// </summary>
+    public const string Current = "current";
 
     public static string Normalize(string? scope) => scope == MyDrafts ? MyDrafts : Published;
 }

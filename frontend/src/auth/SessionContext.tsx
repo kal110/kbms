@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { requestDevToken } from '../api/auth'
+import { changePassword as requestPasswordChange, requestDevToken, requestPasswordToken } from '../api/auth'
 import { ApiError } from '../api/client'
 import { getMe } from '../api/org'
-import type { MeDto } from '../api/types'
+import type { MeDto, SignedInUser } from '../api/types'
 import { isUsable, sessionStore } from './sessionStore'
 import type { Account } from './sessionStore'
 
@@ -22,6 +22,13 @@ interface SessionContextValue {
   switchTo: (externalId: string) => void
   signOut: (externalId: string) => void
   signOutAll: () => void
+  /**
+   * Signs in with a password and makes that person this tab's account. A temporary password fails
+   * with `password-change-required` until `newPassword` is given.
+   */
+  passwordSignIn: (login: string, password: string, newPassword?: string) => Promise<Account>
+  /** Changes this tab's account's password and keeps it signed in; its other sessions end. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   /** Development sign-in: issues a token for a seeded person and makes them this tab's account. */
   devSignIn: (externalId: string) => Promise<Account>
 }
@@ -34,8 +41,7 @@ interface Profile {
   error?: unknown
 }
 
-async function devSignIn(externalId: string): Promise<Account> {
-  const response = await requestDevToken(externalId)
+function keep(response: { accessToken: string; expiresAt: string; user: SignedInUser }): Account {
   const account: Account = {
     externalId: response.user.externalId,
     displayName: response.user.displayName,
@@ -47,6 +53,15 @@ async function devSignIn(externalId: string): Promise<Account> {
   }
   sessionStore.addAccount(account)
   return account
+}
+
+const devSignIn = async (externalId: string) => keep(await requestDevToken(externalId))
+
+const passwordSignIn = async (login: string, password: string, newPassword?: string) =>
+  keep(await requestPasswordToken(login, password, newPassword))
+
+async function changePassword(currentPassword: string, newPassword: string) {
+  keep(await requestPasswordChange(currentPassword, newPassword))
 }
 
 /**
@@ -95,7 +110,7 @@ export function SessionProvider({ signInAs, children }: { signInAs?: string | nu
       (error: unknown) => {
         if (controller.signal.aborted) return
         // The API refused the token: this account must sign in again.
-        if (error instanceof ApiError && error.status === 401) sessionStore.markExpired(externalId)
+        if (error instanceof ApiError && error.status === 401) sessionStore.markExpired(externalId, token)
         setProfiles((p) => ({ ...p, [externalId]: { token, me: p[externalId]?.me, error } }))
       },
     )
@@ -132,6 +147,8 @@ export function SessionProvider({ signInAs, children }: { signInAs?: string | nu
       switchTo: sessionStore.switchTo,
       signOut: sessionStore.signOut,
       signOutAll: sessionStore.signOutAll,
+      passwordSignIn,
+      changePassword,
       devSignIn,
     }),
     [state.accounts, account, me, status, profile?.error, retry],

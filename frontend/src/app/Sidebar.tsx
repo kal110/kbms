@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronsUpDown, Library, LogOut, UserPlus } from 'lucide-react'
+import { ChevronsUpDown, KeyRound, Library, LogOut, UserPlus } from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router'
+import { ChangePasswordModal } from '../auth/ChangePasswordModal'
 import { useMe, useSession } from '../auth/SessionContext'
 import { isUsable } from '../auth/sessionStore'
 import type { Account } from '../auth/sessionStore'
@@ -12,6 +13,7 @@ export function Sidebar() {
   const { accounts, account, switchTo, signOut, signOutAll } = useSession()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
   const userRef = useRef<HTMLDivElement>(null)
   const others = accounts.filter((a) => a.externalId !== account?.externalId)
 
@@ -118,6 +120,20 @@ export function Sidebar() {
               <UserPlus size={16} aria-hidden />
               Add another account
             </button>
+            {me.hasPassword && (
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.menuAction}
+                onClick={() => {
+                  setMenuOpen(false)
+                  setChangingPassword(true)
+                }}
+              >
+                <KeyRound size={16} aria-hidden />
+                Change password
+              </button>
+            )}
             <button type="button" role="menuitem" className={styles.menuAction} onClick={signOutHere}>
               <LogOut size={16} aria-hidden />
               Sign out of {me.displayName}
@@ -159,6 +175,7 @@ export function Sidebar() {
           <ChevronsUpDown size={16} aria-hidden className={styles.userChevron} />
         </button>
       </div>
+      {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
     </aside>
   )
 }

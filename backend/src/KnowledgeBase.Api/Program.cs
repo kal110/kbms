@@ -48,7 +48,7 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(policy => policy
     .AllowAnyHeader()
     .AllowAnyMethod()
     .WithExposedHeaders("ETag", "Location", Idempotency.ReplayedHeader)));
-builder.Services.AddKnowledgeRateLimits();
+builder.Services.AddKbRateLimits();
 builder.Services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database");
 
 var app = builder.Build();
@@ -74,6 +74,7 @@ if (app.Environment.IsDevelopment())
 app.MapHealthChecks("/health");
 
 var api = app.MapGroup("/api").RequireAuthorization();
+api.MapAuthEndpoints(app.Environment);
 api.MapDevEndpoints(app.Environment);
 api.MapOrgEndpoints();
 api.MapSettingsEndpoints();

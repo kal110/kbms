@@ -1,3 +1,4 @@
+using KnowledgeBase.Core.Application.Security;
 using KnowledgeBase.Core.Domain.Calendar;
 using KnowledgeBase.Core.Domain.DocumentTypes;
 using KnowledgeBase.Core.Domain.Org;
@@ -17,6 +18,12 @@ public sealed class AdminSeedOptions
     public string ExternalId { get; set; } = "admin";
     public string DisplayName { get; set; } = "System Administrator";
     public string? Email { get; set; } = "admin@usa.edu.ph";
+
+    /// <summary>
+    /// The administrator's first password for password sign-in (no identity provider). Applied while
+    /// that account has none, as a temporary one to replace at the first sign-in.
+    /// </summary>
+    public string? Password { get; set; }
 }
 
 /// <summary>
@@ -36,6 +43,27 @@ public sealed class ReferenceSeed(IOptions<AdminSeedOptions> admin, TimeProvider
         if (!await db.DocumentTypes.AnyAsync(ct)) await SeedDocumentTypesAsync(db, ct);
         if (!await db.SubmissionTypes.AnyAsync(ct)) SeedSubmissionTypes(db);
         await db.SaveChangesAsync(ct);
+        if (await SeedAdminPasswordAsync(db, ct)) await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Database:Admin:Password, while the administrator has no password yet. Deleting their
+    /// user_credentials row and restarting applies it again (a locked-out last administrator).
+    /// </summary>
+    private async Task<bool> SeedAdminPasswordAsync(KbDbContext db, CancellationToken ct)
+    {
+        var o = admin.Value;
+        if (string.IsNullOrEmpty(o.Password)) return false;
+        var externalId = string.IsNullOrWhiteSpace(o.ExternalId) ? "admin" : o.ExternalId.Trim();
+        var user = await db.Users.Include(u => u.Credential).SingleOrDefaultAsync(u => u.ExternalId == externalId, ct);
+        if (user is null || user.Credential is not null) return false;
+        if (PasswordPolicy.Problem(o.Password, externalId) is { } problem)
+            throw new InvalidOperationException($"Database:Admin:Password won't do: {problem}");
+
+        var hash = PasswordHasher.Hash(o.Password);
+        user.Credential = new UserCredential { PasswordHash = hash };
+        user.Credential.SetPassword(hash, mustChange: true, clock.GetUtcNow());
+        return true;
     }
 
     /// <summary>Makes sure someone can sign in and administer: skipped while any System Administrator is active.</summary>

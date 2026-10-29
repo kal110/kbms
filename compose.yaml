@@ -136,19 +136,24 @@ services:
       ollama:
         condition: service_healthy
     environment:
-      # Development maps the demo sign-in (POST /api/dev/token), migrates and seeds. For real users set
-      # KBMS_ENVIRONMENT=Production plus KBMS_AUTH_AUTHORITY (and KBMS_AUTH_AUDIENCE) for the university IdP.
+      # People sign in with a password (Settings → Users sets them). Development also offers the
+      # pick-a-person demo sign-in (POST /api/dev/token); a server runs Production, which doesn't. With
+      # KBMS_AUTH_AUTHORITY (and KBMS_AUTH_AUDIENCE) the university IdP signs people in instead.
       ASPNETCORE_ENVIRONMENT: ${KBMS_ENVIRONMENT:-Development}
       Auth__Authority: ${KBMS_AUTH_AUTHORITY:-}
       Auth__Audience: ${KBMS_AUTH_AUDIENCE:-kbms-api}
-      # Signs the demo sign-in's tokens while there is no Authority. A build from git has no
-      # appsettings.Development.json, so the key comes from here; set your own on a server.
-      Auth__DevSigningKey: ${KBMS_DEV_SIGNING_KEY:-dev-only-signing-key-change-me-0123456789abcdef}
+      # Signs the API's own sign-in tokens while there is no Authority. A build from git has no
+      # appsettings.Development.json, so the key comes from here; Production refuses this example one.
+      # KBMS_DEV_SIGNING_KEY is its earlier name.
+      Auth__SigningKey: ${KBMS_SIGNING_KEY:-${KBMS_DEV_SIGNING_KEY:-dev-only-signing-key-change-me-0123456789abcdef}}
       # Behind nginx: take the client address and scheme from X-Forwarded-* (audit IPs).
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       ConnectionStrings__Kbms: Host=db;Port=5432;Database=kbms;Username=${KBMS_DB_USER:-kbms};Password=${KBMS_DB_PASSWORD:-kbms-dev-password}
       Database__MigrateOnStartup: "true"
       Database__Seed: ${KBMS_SEED:-true}
+      # The System Administrator's first password (sign-in id admin), applied while they have none; it
+      # has to be changed at the first sign-in. Empty: sign in through Development's demo sign-in instead.
+      Database__Admin__Password: ${KBMS_ADMIN_PASSWORD:-}
       # A Vite dev server on the host may call this API through the web port (VITE_API_BASE_URL=http://localhost:25480).
       Cors__Origins__0: http://localhost:5173
       Storage__Provider: S3
@@ -159,6 +164,9 @@ services:
       Storage__S3__AccessKey: ${KBMS_S3_ACCESS_KEY:-kbms}
       Storage__S3__SecretKey: ${KBMS_S3_SECRET_KEY:-kbms-dev-secret}
       Storage__S3__CreateBucket: "true"
+      # OCR: Tesseract in the API image reads scanned PDF pages and PNG/JPEG uploads (English and
+      # Filipino), offline. Documents processed before it was there are read at the next start.
+      Ocr__Enabled: ${KBMS_OCR_ENABLED:-true}
       # AI (frames 8, 10, 25): chunks embedded by Ollama into Qdrant; answers from the local model in
       # Ollama, or from Claude with KBMS_CHAT_PROVIDER=Anthropic and ANTHROPIC_API_KEY.
       Ai__Enabled: ${KBMS_AI_ENABLED:-true}

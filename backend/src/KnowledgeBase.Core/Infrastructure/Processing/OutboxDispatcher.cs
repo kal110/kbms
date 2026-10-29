@@ -91,8 +91,9 @@ public sealed class OutboxDispatcher(
 }
 
 /// <summary>
-/// Every few minutes: revokes expired access grants (and recomputes effective access), then
-/// removes short-lived rows — expired idempotency keys and old delivered outbox messages.
+/// Every few minutes: revokes expired access grants (and recomputes effective access), removes
+/// short-lived rows — expired idempotency keys and old delivered outbox messages — and fills in
+/// page text for exact search on versions processed before it existed.
 /// </summary>
 public sealed class HousekeepingWorker(
     IServiceScopeFactory scopes,
@@ -105,6 +106,9 @@ public sealed class HousekeepingWorker(
 
     /// <summary>Also the longest an expired grant keeps working.</summary>
     public static readonly TimeSpan Interval = TimeSpan.FromMinutes(5);
+
+    /// <summary>Versions without readable extracted text; not retried until restart.</summary>
+    private readonly HashSet<Guid> noPages = [];
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -128,6 +132,9 @@ public sealed class HousekeepingWorker(
                     .Where(m => m.ProcessedAt != null && m.ProcessedAt < now - OutboxRetention)
                     .ExecuteDeleteAsync(stoppingToken);
                 if (keys + sent > 0) log.LogInformation("Housekeeping removed {Keys} idempotency keys and {Sent} outbox messages", keys, sent);
+
+                var pages = await scope.ServiceProvider.GetRequiredService<VersionPageBackfill>().RunAsync(noPages, stoppingToken);
+                if (pages > 0) log.LogInformation("Stored page text for exact search on {Count} version(s)", pages);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

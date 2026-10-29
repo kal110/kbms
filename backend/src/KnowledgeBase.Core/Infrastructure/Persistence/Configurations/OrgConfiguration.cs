@@ -18,6 +18,16 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
     }
 }
 
+internal sealed class UserCredentialConfiguration : IEntityTypeConfiguration<UserCredential>
+{
+    public void Configure(EntityTypeBuilder<UserCredential> b)
+    {
+        b.HasKey(x => x.UserId);
+        b.HasOne(x => x.User).WithOne(u => u.Credential).HasForeignKey<UserCredential>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        b.Property(x => x.PasswordHash).HasMaxLength(200);
+    }
+}
+
 internal sealed class GroupConfiguration : IEntityTypeConfiguration<Group>
 {
     public void Configure(EntityTypeBuilder<Group> b)

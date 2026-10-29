@@ -129,6 +129,9 @@ public sealed record VersionComparison(VersionDto From, VersionDto To, bool Same
 /// <summary>A short-lived signed link to the bytes (5 minutes, frame 8).</summary>
 public sealed record ContentLink(string Url, DateTimeOffset ExpiresAt, Guid VersionId, int VersionNumber, string FileName, bool Inline);
 
+/// <summary>One page of a version's extracted text, whitespace collapsed (Pages = how many it has).</summary>
+public sealed record VersionPageText(Guid VersionId, int VersionNumber, int Page, int Pages, string Text);
+
 public sealed record DocumentListQuery(
     string? Q = null,
     Guid? TypeId = null,
@@ -224,16 +227,47 @@ public sealed record StoredObject(Stream Content, string ContentType, string? Fi
 
 // ---- Search -------------------------------------------------------------------------------
 
+/// <param name="Mode">
+/// "smart" (default): keywords in the title, number and description, plus passages close in meaning
+/// once the AI index is on. "exact": the words exactly as typed (case aside), in the title, number,
+/// description or text of the current version. A query in double quotes is exact too.
+/// </param>
 public sealed record SearchQuery(
     string? Q = null,
     Guid? TypeId = null,
     Guid? YearId = null,
     Guid? TermId = null,
     Guid? FolderId = null,
+    DocumentState? State = null,
+    string? Mode = null,
     int Page = 1,
     int PageSize = 20);
 
-public sealed record SearchHit(DocumentListItem Document, string? Snippet, double Score);
+public static class SearchModes
+{
+    public const string Smart = "smart";
+    public const string Exact = "exact";
+}
 
-/// <summary>Keyword results. <c>Semantic</c> stays false until the AI index is switched on.</summary>
-public sealed record SearchResult(string Query, IReadOnlyList<SearchHit> Items, int Total, int Page, int PageSize, bool Semantic);
+/// <summary>What a hit was found by.</summary>
+public enum SearchMatch
+{
+    /// <summary>Its title, number or description.</summary>
+    Details,
+
+    /// <summary>The exact phrase in the text of its current version.</summary>
+    Text,
+
+    /// <summary>A passage of its current version close in meaning to the query.</summary>
+    Meaning,
+}
+
+/// <param name="Snippet">The passage that matched (Text, Meaning), else the start of the description.</param>
+/// <param name="Page">The page the snippet comes from (Text, Meaning).</param>
+/// <param name="PageMatches">Exact search: how many pages of the current version contain the phrase.</param>
+public sealed record SearchHit(DocumentListItem Document, string? Snippet, double Score, SearchMatch Match = SearchMatch.Details, int? Page = null, int PageMatches = 0);
+
+/// <param name="Mode">The mode that ran: "smart" or "exact".</param>
+/// <param name="Semantic">Search by meaning took part (smart mode, AI index ready).</param>
+/// <param name="Notice">Why search by meaning didn't take part although AI is on (e.g. the index is being built).</param>
+public sealed record SearchResult(string Query, IReadOnlyList<SearchHit> Items, int Total, int Page, int PageSize, bool Semantic, string Mode, string? Notice = null);

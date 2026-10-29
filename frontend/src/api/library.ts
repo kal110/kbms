@@ -15,6 +15,7 @@ import type {
   UpdateFolderRequest,
   VersionComparison,
   VersionDto,
+  VersionPageText,
 } from './types'
 
 // Folders, documents, versions and keyword search (backend LibraryEndpoints).
@@ -34,12 +35,17 @@ export interface DocumentListQuery {
   pageSize?: number
 }
 
+/** smart: keywords plus meaning (once the AI index is on). exact: the phrase as typed, in the text too. */
+export type SearchMode = 'smart' | 'exact'
+
 export interface SearchQuery {
   q?: string
   typeId?: string
   yearId?: string
   termId?: string
   folderId?: string
+  state?: DocumentState
+  mode?: SearchMode
   page?: number
   pageSize?: number
 }
@@ -102,6 +108,10 @@ export const getContentLink = (id: string, options: { versionId?: string; inline
   api.get<ContentLink>(`/documents/${id}/content`, {
     query: { versionId: options.versionId, inline: options.inline ?? false, redirect: false },
   })
+
+/** One page of a version's extracted text (needs View): previews files the browser can't draw. */
+export const getPageText = (id: string, versionId: string, page: number, signal?: AbortSignal) =>
+  api.get<VersionPageText>(`/documents/${id}/versions/${versionId}/pages/${page}`, { signal })
 
 /** Opens a preview in a new tab, or starts the download. */
 export async function openDocumentContent(id: string, options: { versionId?: string; inline?: boolean } = {}) {

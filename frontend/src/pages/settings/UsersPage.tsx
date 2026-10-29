@@ -34,6 +34,7 @@ import { Button } from '../../components/Button'
 import { FilterChip } from '../../components/FilterChip'
 import { Modal } from '../../components/Modal'
 import { SettingsFrame } from './SettingsFrame'
+import { UserPasswordSection } from './UserPasswordSection'
 import panel from './panel.module.css'
 import styles from './UsersPage.module.css'
 
@@ -561,6 +562,8 @@ function UserDrawer({ user, units, meId, onChanged }: UserDrawerProps) {
         </div>
         <InlineError error={formError(save.error)} />
 
+        <UserPasswordSection user={user} meId={meId} onChanged={onChanged} />
+
         <div className={styles.section}>
           <span className={panel.eyebrow}>Roles & memberships</span>
           {holdings.length ? (
@@ -998,14 +1001,15 @@ function NewUserModal({ onCreate, onClose }: { onCreate: (user: UserAdminDto) =>
           className={`${panel.input} ${showError('externalId') || taken ? panel.inputInvalid : ''}`}
           value={externalId}
           maxLength={200}
-          placeholder="e.g. u-maria"
+          placeholder="e.g. maria.santos"
           onChange={(e) => setExternalId(e.target.value)}
         />
         {showError('externalId') ? (
           <span className={panel.error}>{showError('externalId')}</span>
         ) : (
           <span className={panel.help}>
-            The id the identity provider puts in their sign-in token (its subject). It can’t change later.
+            What they type to sign in, e.g. their email’s name part. It can’t change later. Set their password
+            after adding them.
           </span>
         )}
       </label>

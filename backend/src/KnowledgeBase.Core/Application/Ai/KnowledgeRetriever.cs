@@ -56,7 +56,11 @@ public sealed class KnowledgeRetriever(
     public async Task<RetrievalResult> SearchAsync(KnowledgeQuery query, CancellationToken ct = default) =>
         await RetrieveAsync(await currentUser.GetAsync(ct), query, ct);
 
-    public async Task<RetrievalResult> RetrieveAsync(UserContext user, KnowledgeQuery query, CancellationToken ct = default)
+    /// <param name="followUpOf">
+    /// The conversation's previous question. It is searched together with this one, so a follow-up
+    /// such as "and for the second term?" finds the passages it is about.
+    /// </param>
+    public async Task<RetrievalResult> RetrieveAsync(UserContext user, KnowledgeQuery query, CancellationToken ct = default, string? followUpOf = null)
     {
         var o = ai.Value;
         if (!o.Enabled) throw new FeatureDisabledException("The AI assistant", "Ai:Enabled is off.");
@@ -67,10 +71,11 @@ public sealed class KnowledgeRetriever(
         if (active is null || problem is not null)
             throw new ServiceUnavailableException("index-unavailable", "Semantic search isn't ready.", Sentence(problem));
 
+        var searchText = string.IsNullOrWhiteSpace(followUpOf) ? question : $"{followUpOf.Trim()}\n{question}";
         float[] dense;
         try
         {
-            dense = (await embedder.EmbedAsync([question], ct))[0];
+            dense = (await embedder.EmbedAsync([searchText], ct))[0];
         }
         catch (EmbeddingException ex)
         {
@@ -81,7 +86,7 @@ public sealed class KnowledgeRetriever(
         IReadOnlyList<VectorHit> hits;
         try
         {
-            hits = await index.SearchAsync(active.Collection, dense, SparseEncoder.EncodeQuery(question), filter, o.Retrieval.Candidates, ct);
+            hits = await index.SearchAsync(active.Collection, dense, SparseEncoder.EncodeQuery(searchText), filter, o.Retrieval.Candidates, ct);
         }
         catch (VectorIndexException ex)
         {
@@ -172,12 +177,12 @@ public sealed class KnowledgeRetriever(
 
     private static string? Sentence(string? s) => string.IsNullOrEmpty(s) ? s : char.ToUpperInvariant(s[0]) + s[1..] + ".";
 
-    private static Guid GuidField(VectorHit hit, string key) =>
+    internal static Guid GuidField(VectorHit hit, string key) =>
         hit.Payload.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.String && Guid.TryParse(v.GetString(), out var id) ? id : Guid.Empty;
 
-    private static int IntField(IReadOnlyDictionary<string, JsonElement> payload, string key) =>
+    internal static int IntField(IReadOnlyDictionary<string, JsonElement> payload, string key) =>
         payload.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.Number && v.TryGetInt32(out var n) ? n : 0;
 
-    private static string? StringField(IReadOnlyDictionary<string, JsonElement> payload, string key) =>
+    internal static string? StringField(IReadOnlyDictionary<string, JsonElement> payload, string key) =>
         payload.TryGetValue(key, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
 }

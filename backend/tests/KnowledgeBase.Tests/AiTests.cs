@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using KnowledgeBase.Core.Application.Ai;
+using KnowledgeBase.Core.Application.Library;
 using KnowledgeBase.Core.Domain.Processing;
 using KnowledgeBase.Core.Infrastructure.Ai;
 using KnowledgeBase.Core.Infrastructure.Processing;
@@ -349,6 +350,112 @@ public class AiTests
     }
 
     [Fact]
+    public void Earlier_turns_come_first_as_quoted_context_without_their_citation_markers()
+    {
+        var passage = new Passage(1, Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1, "Handbook", null, "Policy", 2, 2, null, "Second term starts in January.", 0.7);
+        EarlierTurn[] history =
+        [
+            new("When does the first term start?", "It starts in August [1][2]."),
+            new("Is there a <b>fee</b>?", "Yes, ₱500 [3]."),
+        ];
+
+        var message = AssistantService.BuildUserMessage([passage], "And the second term?", history);
+
+        Assert.StartsWith("<conversation>\n<turn>\n<question>When does the first term start?</question>\n<answer>It starts in August.</answer>", message);
+        Assert.Contains("<question>Is there a &lt;b&gt;fee&lt;/b&gt;?</question>\n<answer>Yes, ₱500.</answer>", message);
+        Assert.True(message.IndexOf("</conversation>", StringComparison.Ordinal) < message.IndexOf("<passages>", StringComparison.Ordinal));
+        Assert.EndsWith("Question: And the second term?", message);
+        Assert.DoesNotContain("<conversation>", AssistantService.BuildUserMessage([passage], "And the second term?", []));
+    }
+
+    [Theory]
+    [InlineData("  What is   the late enrollment fee? ", "What is the late enrollment fee?")]
+    [InlineData("Ano ang mga kailangan para sa paglipat ng kurso mula sa isang kolehiyo papunta sa ibang kolehiyo ng unibersidad?",
+        "Ano ang mga kailangan para sa paglipat ng kurso mula sa isang kolehiyo papunta…")]
+    public void Conversations_are_named_after_their_first_question(string question, string title)
+    {
+        Assert.Equal(title, AssistantService.ConversationTitle(question));
+        Assert.True(title.Length <= 81);
+    }
+
+    [Fact]
+    public void Search_by_meaning_keeps_each_documents_best_close_passage()
+    {
+        Guid docA = Guid.NewGuid(), docB = Guid.NewGuid(), docC = Guid.NewGuid(), version = Guid.NewGuid();
+        VectorHit Hit(Guid doc, double dense, int page, string text) => new(Guid.NewGuid(), dense, 0, new Dictionary<string, JsonElement>
+        {
+            ["document_id"] = JsonSerializer.SerializeToElement(doc.ToString()),
+            ["version_id"] = JsonSerializer.SerializeToElement(version.ToString()),
+            ["page_start"] = JsonSerializer.SerializeToElement(page),
+            ["section"] = JsonSerializer.SerializeToElement(""),
+            ["text"] = JsonSerializer.SerializeToElement(text),
+        });
+
+        var matches = SemanticDocumentSearch.BestPerDocument(
+        [
+            Hit(docB, 0, 1, "keyword-only hit"),
+            Hit(docA, 0.61, 4, "Fees   for late\nenrollment"),
+            Hit(docB, 0.52, 7, "close enough"),
+            Hit(docA, 0.70, 9, "a later passage of A"),
+            Hit(docC, 0.30, 2, "too far in meaning"),
+        ], minScore: 0.45);
+
+        Assert.Equal([docA, docB], matches.Select(m => m.DocumentId));
+        Assert.Equal((4, "Fees for late enrollment", 0.61), (matches[0].Page, matches[0].Snippet, matches[0].Score));
+        Assert.Equal(7, matches[1].Page);
+        Assert.Null(matches[1].Section);
+    }
+
+    [Fact]
+    public void The_library_scope_searches_current_versions_in_any_state()
+    {
+        var current = QdrantVectorIndex.Filter(new(["user:1"], KnowledgeScopes.Current, Guid.NewGuid(), null, null, null, null)).ToJsonString();
+
+        Assert.Contains("""{"key":"is_current","match":{"value":true}}""", current);
+        Assert.DoesNotContain("\"state\"", current);
+        Assert.DoesNotContain("lifecycle", current);
+        Assert.Equal(KnowledgeScopes.Published, KnowledgeScopes.Normalize(KnowledgeScopes.Current));
+    }
+
+    [Theory]
+    [InlineData("late  enrollment", null, "smart", "late enrollment")]
+    [InlineData("late enrollment", "exact", "exact", "late enrollment")]
+    [InlineData("late enrollment", "EXACT", "exact", "late enrollment")]
+    [InlineData("\"late\nenrollment fee\"", null, "exact", "late enrollment fee")]
+    [InlineData("“late enrollment”", "smart", "exact", "late enrollment")]
+    [InlineData("\"", null, "smart", "\"")]
+    public void Exact_search_runs_when_asked_for_or_when_the_query_is_quoted(string q, string? mode, string expectedMode, string phrase) =>
+        Assert.Equal((expectedMode, phrase), SearchService.ParseMode(q, mode));
+
+    [Fact]
+    public void Library_fusion_rewards_documents_found_both_ways()
+    {
+        Guid a = Guid.NewGuid(), b = Guid.NewGuid(), c = Guid.NewGuid(), d = Guid.NewGuid();
+
+        var fused = SearchService.Fuse([a, b, c], [c, d]);
+
+        // b (keyword #2) and d (meaning #2) tie; the meaning match goes first.
+        Assert.Equal([c, a, d, b], fused.Select(f => f.Id));
+        Assert.True(fused[0].Score > fused[1].Score);
+        Assert.Equal(fused[2].Score, fused[3].Score);
+    }
+
+    [Fact]
+    public void Exact_snippets_show_the_phrase_in_its_sentence()
+    {
+        var text = string.Join(' ', Enumerable.Repeat("filler", 40)) + " Students who enroll late pay the Late Enrollment Fee of 500 pesos. "
+            + string.Join(' ', Enumerable.Repeat("after", 60));
+
+        var snippet = SearchService.ExactSnippet(text, "late enrollment fee");
+
+        Assert.StartsWith("…", snippet);
+        Assert.EndsWith("…", snippet);
+        Assert.Contains("pay the Late Enrollment Fee of 500 pesos.", snippet);
+        Assert.DoesNotContain("fille ", snippet + " ");
+        Assert.Equal("Short page.", SearchService.ExactSnippet("Short page.", "missing"));
+    }
+
+    [Fact]
     public void Questions_are_required_and_bounded()
     {
         Assert.Equal("Late policy?", KnowledgeRetriever.Validate("  Late policy?  ", 2000));
@@ -522,6 +629,10 @@ public class AiTests
 
         Assert.True(result.Indexed);
         Assert.Equal(DocumentProcessor.PagesKey(version.Id, 1), result.TextObjectKey);
+        var page = Assert.Single(result.Pages!);
+        Assert.Equal(1, page.Number);
+        Assert.DoesNotContain("\n", page.Text);
+        Assert.DoesNotContain("  ", page.Text);
         Assert.True(storage.ContainsKey(DocumentProcessor.PagesKey(version.Id, 1)));
         Assert.True(storage.ContainsKey(DocumentProcessor.ChunksKey(version.Id, 1)));
         Assert.True(indexer.Chunks.Count >= 2);

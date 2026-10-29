@@ -1,5 +1,14 @@
 import { api, send } from './client'
-import type { AssistantAnswer, AssistantSource, AssistantStatus, ChatRequest, PassageQuery, RetrievalResult } from './types'
+import type {
+  AssistantAnswer,
+  AssistantSource,
+  AssistantStatus,
+  ChatRequest,
+  ConversationDetail,
+  PagedResultOfConversationSummary,
+  PassageQuery,
+  RetrievalResult,
+} from './types'
 
 // The AI assistant and semantic search (frames 5, 10). Answers stream as server-sent events:
 // "sources" (the passages the model may cite) → "delta"… (provisional text) → "done" (the final,
@@ -12,8 +21,18 @@ export const getAssistantStatus = (signal?: AbortSignal) => api.get<AssistantSta
 export const searchPassages = (query: PassageQuery, signal?: AbortSignal) =>
   api.get<RetrievalResult>('/knowledge/passages', { query: { ...query }, signal })
 
+// ---- Conversations: the caller's own, kept per account (nobody else can open them)
+
+export const listConversations = (signal?: AbortSignal) =>
+  api.get<PagedResultOfConversationSummary>('/knowledge/conversations', { query: { pageSize: 50 }, signal })
+
+export const getConversation = (id: string, signal?: AbortSignal) => api.get<ConversationDetail>(`/knowledge/conversations/${id}`, { signal })
+
+export const deleteConversation = (id: string) => api.delete(`/knowledge/conversations/${id}`)
+
+/** "sources" names the conversation the answer is saved to: a new one unless the request gave one. */
 export type AssistantEvent =
-  | { type: 'sources'; scope: string; sources: AssistantSource[]; sufficient: boolean }
+  | { type: 'sources'; scope: string; sources: AssistantSource[]; sufficient: boolean; conversationId: string }
   | { type: 'delta'; text: string }
   | { type: 'done'; answer: AssistantAnswer }
   | { type: 'error'; message: string }

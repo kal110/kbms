@@ -79,6 +79,17 @@ internal sealed class DocumentVersionConfiguration : IEntityTypeConfiguration<Do
     }
 }
 
+internal sealed class VersionPageConfiguration : IEntityTypeConfiguration<VersionPage>
+{
+    public void Configure(EntityTypeBuilder<VersionPage> b)
+    {
+        b.HasKey(x => new { x.VersionId, x.PageNumber });
+        b.HasOne<DocumentVersion>().WithMany().HasForeignKey(x => x.VersionId).OnDelete(DeleteBehavior.Cascade);
+        // Exact search is ILIKE '%phrase%'; trigrams keep it off a sequential scan.
+        b.HasIndex(x => x.Text).HasMethod("GIN").HasOperators("gin_trgm_ops").HasDatabaseName("ix_version_pages_text_trgm");
+    }
+}
+
 internal sealed class CollectionConfiguration : IEntityTypeConfiguration<Collection>
 {
     public void Configure(EntityTypeBuilder<Collection> b)

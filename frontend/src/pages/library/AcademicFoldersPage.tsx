@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { getFolder, getFolderChildren, getFolderGroups, getFolderTree, getMyFolders, searchDocuments } from '../../api/library'
+import type { SearchMode } from '../../api/library'
 import { getOrgTree } from '../../api/org'
 import { getAcademicYears, getActiveTerm } from '../../api/reference'
 import type { DocumentGroup, DocumentListItem, FolderKind, FolderNode, PersonDto } from '../../api/types'
@@ -44,6 +45,8 @@ import { FolderGroupsView } from './FolderGroupsView'
 import { groupYearsOf, plural } from './folderGroups'
 import type { GroupYear } from './folderGroups'
 import { stateLabel, stateTone } from './libraryUi'
+import { effectiveMode, hitLink, searchPlaceholder } from './searchModes'
+import { HitSnippet, SearchModeToggle } from './searchUi'
 import styles from './AcademicFoldersPage.module.css'
 
 /** Direct documents listed per folder (the API's largest page). */
@@ -207,6 +210,7 @@ export function AcademicFoldersPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const [q, setQ] = useState('')
+  const [mode, setMode] = useState<SearchMode>('smart')
   const [infoOpen, setInfoOpen] = useState(false)
   // Opening a folder from a link (e.g. a document's breadcrumb) expands the tree down to it.
   const [expandedFor, setExpandedFor] = useState<string>()
@@ -240,8 +244,8 @@ export function AcademicFoldersPage() {
   )
   const search = useApi(
     (signal) =>
-      q && scopeId ? searchDocuments({ q, folderId: scopeId, termId: termFilter || undefined, pageSize: 50 }, signal) : Promise.resolve(null),
-    [q, scopeId, termFilter],
+      q && scopeId ? searchDocuments({ q, mode, folderId: scopeId, termId: termFilter || undefined, pageSize: 50 }, signal) : Promise.resolve(null),
+    [q, mode, scopeId, termFilter],
   )
   const groups = useApi(
     (signal) =>
@@ -533,6 +537,7 @@ export function AcademicFoldersPage() {
   // While a new folder or term filter loads, the previous answer isn't shown under the new label.
   const folderDocs = !contents.loading && contents.data?.folder.id === selected.id ? contents.data.documents : null
   const hits = q && search.data?.query === q ? search.data : null
+  const hitFor = (id: string) => hits?.items.find((h) => h.document.id === id)
   const rows: DocumentListItem[] = q ? (hits?.items.map((h) => h.document) ?? []) : (folderDocs?.items ?? [])
   const filterLabel = filterTerm ? `${filterTerm.shortName} ${filterTerm.academicYearName.replace(/^AY\s*/, '')}` : ''
   const rowsLoading = q ? !hits && !search.error : !folderDocs && !contents.error
@@ -784,10 +789,16 @@ export function AcademicFoldersPage() {
           <>
             <label className={styles.search}>
               <Search size={14} aria-hidden />
-              <input value={query} placeholder={`Search in ${scopeName}`} onChange={(e) => setQuery(e.target.value)} />
+              <input
+                value={query}
+                placeholder={searchPlaceholder(mode, `Search in ${scopeName}`)}
+                aria-label={`Search in ${scopeName}`}
+                onChange={(e) => setQuery(e.target.value)}
+              />
               {query && (
                 <button
                   type="button"
+                  className={styles.clearSearch}
                   aria-label="Clear search"
                   onClick={() => {
                     setQuery('')
@@ -797,6 +808,7 @@ export function AcademicFoldersPage() {
                   <X size={12} />
                 </button>
               )}
+              <SearchModeToggle mode={mode} quoted={effectiveMode(query, mode) !== mode} onChange={setMode} />
             </label>
             <FilterChip<string>
               label="Academic term"
@@ -959,7 +971,7 @@ export function AcademicFoldersPage() {
                             .join(' › ') || d.folder.name
                         : ''
                     return (
-                      <div key={d.id} className={`${styles.docRow} ${styles.docBody}`} onClick={() => navigate(`/documents/${d.id}`)}>
+                      <div key={d.id} className={`${styles.docRow} ${styles.docBody}`} onClick={() => navigate(hitLink(d.id, hitFor(d.id)))}>
                         <span className={styles.docCell}>
                           <FileText size={16} className={styles.fileIcon} aria-hidden />
                           <span className={styles.docText}>
@@ -968,6 +980,7 @@ export function AcademicFoldersPage() {
                               {d.currentVersion ? `${d.currentVersion.fileName} · v${d.currentVersion.number}` : 'No file yet'}
                               {where ? ` · ${where}` : ''}
                             </span>
+                            <HitSnippet hit={hitFor(d.id)} query={q} />
                           </span>
                         </span>
                         <span>

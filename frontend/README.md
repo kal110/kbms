@@ -36,10 +36,18 @@ reach the browser, and they are baked into the build.
 
 ## Signing in, with several accounts
 
-There is no identity provider yet, so sign-in uses the API's development endpoints
-(`GET /api/dev/users`, `POST /api/dev/token`): pick one of the active people (a fresh database has only
-`admin`, the System Administrator). The API only offers them in Development; with `Auth:Authority`
-set, the sign-in page says single sign-on isn't connected yet.
+The sign-in page asks the API what it offers (`GET /api/auth/options`):
+
+- **Password** (`POST /api/auth/sign-in`): the sign-in id or email and a password. A System
+  Administrator gives each person a temporary password under Settings › Users; at the first sign-in
+  the API answers `password-change-required` and the page asks for their own (the same request again,
+  with `newPassword`). Signed in, **Change password** is in the account menu.
+- **Development sign-in** (`GET /api/dev/users`, `POST /api/dev/token`), only when the API runs in
+  Development: pick one of the active people under the password form (a fresh database has only
+  `admin`, the System Administrator).
+
+With `Auth:Authority` set the API issues no tokens itself, and the page says single sign-on isn't
+connected yet.
 
 Several people can be signed in at once, like a browser's account switcher:
 
@@ -49,9 +57,9 @@ Several people can be signed in at once, like a browser's account switcher:
   tab uses is kept per tab (`sessionStorage`). So you can submit as faculty in one tab and review as
   the Academic Supervisor in another. A new tab starts with the account used last.
 - Signing in or out in one tab updates the others.
-- When the API refuses an account's token (expired after `Auth:DevTokenHours`, or the user was
-  deactivated), that account shows as signed out and the app asks to sign it in again. Other accounts
-  keep working.
+- When the API refuses an account's token (expired after `Auth:TokenHours`, the password changed, or
+  the user was deactivated), that account shows as signed out and the app asks to sign it in again.
+  Other accounts keep working.
 - Switching accounts reloads the screen, so nothing from the previous person stays on it.
 
 The sidebar and home page follow what the account may do (`persona` and `capabilities` from

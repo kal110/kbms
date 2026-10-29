@@ -93,6 +93,10 @@ public static class LibraryEndpoints
             })
             .WithSummary("Preview (inline=true, View) or download (Download) a version: 302 to a short-lived signed URL, or the link as JSON with redirect=false");
 
+        documents.MapGet("/{id:guid}/versions/{versionId:guid}/pages/{page:int}", (Guid id, Guid versionId, int page,
+                DocumentService service, CancellationToken ct) => service.GetPageTextAsync(id, versionId, page, ct))
+            .WithSummary("One page of a version's extracted text (View): previews files the browser can't draw, such as Word documents");
+
         documents.MapPost("/{id:guid}/archive", async (Guid id, DocumentService service, HttpContext http, CancellationToken ct) =>
             {
                 var document = await service.ArchiveAsync(id, http.Request.IfMatch(), ct);

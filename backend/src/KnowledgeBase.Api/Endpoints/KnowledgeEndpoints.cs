@@ -21,13 +21,19 @@ public static class KnowledgeEndpoints
     public const string RateLimitPolicy = "ai";
 
     /// <param name="Scope">"published" (default: the official library) or "my-drafts" (your own unpublished versions).</param>
+    /// <param name="ConversationId">Continue one of your conversations; omit to start a new one (its id comes in the "sources" event).</param>
     public sealed record ChatRequest(
         string Question,
         string? Scope = null,
         Guid? FolderId = null,
         Guid? DocumentTypeId = null,
         Guid? AcademicYearId = null,
-        Guid? AcademicTermId = null);
+        Guid? AcademicTermId = null,
+        Guid? ConversationId = null);
+
+    public sealed record ConversationListQuery(
+        [property: FromQuery(Name = "page")] int? Page,
+        [property: FromQuery(Name = "pageSize")] int? PageSize);
 
     public sealed record PassageQuery(
         [property: FromQuery(Name = "q")] string? Q,
@@ -62,16 +68,33 @@ public static class KnowledgeEndpoints
                 // Validation, retrieval and the access re-check run before the stream starts, so
                 // their errors are ordinary ProblemDetails responses.
                 var turn = await assistant.StartAsync(new KnowledgeQuery(request.Question, request.Scope,
-                    request.FolderId, request.DocumentTypeId, request.AcademicYearId, request.AcademicTermId), ct);
+                    request.FolderId, request.DocumentTypeId, request.AcademicYearId, request.AcademicTermId), request.ConversationId, ct);
                 return TypedResults.ServerSentEvents(Events(assistant, turn, ct));
             })
             .RequireRateLimiting(RateLimitPolicy)
             .WithSummary("Ask the assistant: text/event-stream of sources, delta…, done (or error)")
             .Produces<AssistantEvent>(StatusCodes.Status200OK, "text/event-stream")
             .ProducesValidationProblem()
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesProblem(StatusCodes.Status501NotImplemented)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+        // The caller's own conversations; they stay readable while AI is switched off.
+        var conversations = knowledge.MapGroup("/conversations");
+        conversations.MapGet("/", ([AsParameters] ConversationListQuery query, ConversationService service, CancellationToken ct) =>
+                service.ListAsync(query.Page ?? 1, query.PageSize ?? 30, ct))
+            .WithSummary("Your assistant conversations, most recent first");
+        conversations.MapGet("/{id:guid}", (Guid id, ConversationService service, CancellationToken ct) => service.GetAsync(id, ct))
+            .WithSummary("One of your conversations with its questions and answers (sources re-checked against your access)")
+            .ProducesProblem(StatusCodes.Status404NotFound);
+        conversations.MapDelete("/{id:guid}", async (Guid id, ConversationService service, CancellationToken ct) =>
+            {
+                await service.DeleteAsync(id, ct);
+                return TypedResults.NoContent();
+            })
+            .WithSummary("Delete one of your conversations")
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         knowledge.MapGet("/passages", ([AsParameters] PassageQuery query, KnowledgeRetriever retriever, CancellationToken ct) =>
                 retriever.SearchAsync(new KnowledgeQuery(query.Q ?? "", query.Scope, query.FolderId, query.DocumentTypeId,
@@ -90,36 +113,4 @@ public static class KnowledgeEndpoints
     {
         await foreach (var e in assistant.StreamAsync(turn, ct)) yield return new SseItem<AssistantEvent>(e, e.Type);
     }
-
-    /// <summary>Ai:Retrieval:RequestsPerMinute per signed-in user across /chat and /passages (frame 10, step 3).</summary>
-    public static IServiceCollection AddKnowledgeRateLimits(this IServiceCollection services) =>
-        services.AddRateLimiter(o =>
-        {
-            o.AddPolicy(RateLimitPolicy, http => RateLimitPartition.GetFixedWindowLimiter(
-                http.User.FindFirst("sub")?.Value ?? http.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
-                _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = Math.Max(1, http.RequestServices.GetRequiredService<IOptions<AiOptions>>().Value.Retrieval.RequestsPerMinute),
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueLimit = 0,
-                }));
-            o.OnRejected = async (context, ct) =>
-            {
-                var http = context.HttpContext;
-                http.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retry))
-                    http.Response.Headers.RetryAfter = ((int)Math.Ceiling(retry.TotalSeconds)).ToString();
-                await http.RequestServices.GetRequiredService<IProblemDetailsService>().WriteAsync(new ProblemDetailsContext
-                {
-                    HttpContext = http,
-                    ProblemDetails =
-                    {
-                        Status = StatusCodes.Status429TooManyRequests,
-                        Type = ProblemDetailsExceptionHandler.TypeFor("rate-limited"),
-                        Title = "Too many questions in a minute. Wait a moment and try again.",
-                        Extensions = { ["code"] = "rate-limited" },
-                    },
-                });
-            };
-        });
 }

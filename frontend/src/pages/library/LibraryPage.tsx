@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, Ellipsis, FileArchive, FileText, FolderPlus, LayoutGrid, List, Search, Upload, X } from 'lucide-react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { ApiError, errorMessage, isAbort } from '../../api/client'
-import { archiveDocument, createFolder, getFolder, getFolderChildren, getFolderTree, restoreDocument } from '../../api/library'
+import { archiveDocument, createFolder, getFolder, getFolderChildren, getFolderTree, restoreDocument, searchDocuments } from '../../api/library'
+import type { SearchMode } from '../../api/library'
 import { getAcademicYears, getDocumentTypes } from '../../api/reference'
-import type { AcademicTag, AcademicYearDto, AccessLevel, DocumentListItem, DocumentState, FolderNode } from '../../api/types'
+import type { AcademicTag, AcademicYearDto, AccessLevel, DocumentListItem, DocumentState, FolderNode, SearchHit } from '../../api/types'
 import { completeUpload, uploadFile } from '../../api/uploads'
 import { useAction, useApi } from '../../api/useApi'
 import { can } from '../../app/navigation'
@@ -22,9 +23,20 @@ import { FolderTree } from './FolderTree'
 import { UploadModal } from './UploadModal'
 import type { UploadRequest } from './UploadModal'
 import { indexBadge, isProcessing, stateLabel, stateTone } from './libraryUi'
+import { effectiveMode, hitLink, searchPlaceholder } from './searchModes'
+import { HitSnippet, SearchModeToggle } from './searchUi'
 import styles from './LibraryPage.module.css'
 
 const PAGE_SIZE = 6
+
+/** A page of the list: the folder's documents, or a search's matches with what each one matched on. */
+interface DocumentPage {
+  items: DocumentListItem[]
+  total: number
+  hits: Map<string, SearchHit> | null
+  /** Why search by meaning didn't take part, when the AI is on but not ready. */
+  notice: string | null
+}
 /** While a listed document's text is still being extracted, the list reloads this often. */
 const PROCESSING_POLL_MS = 4000
 const MAX_POLLS = 45
@@ -137,6 +149,7 @@ export function LibraryPage() {
 
   const [query, setQuery] = useState('')
   const [q, setQ] = useState('')
+  const [mode, setMode] = useState<SearchMode>('smart')
   const [typeFilter, setTypeFilter] = useState('any')
   const [period, setPeriod] = useState('any')
   const [state, setState] = useState('any')
@@ -161,33 +174,41 @@ export function LibraryPage() {
   }, [query])
 
   const detail = useApi((signal) => (folderId ? getFolder(folderId, signal) : Promise.resolve(null)), [folderId])
-  const docs = useApi(
-    (signal) =>
-      folderId
-        ? getFolderChildren(
-            folderId,
-            {
-              includeSubfolders: true,
-              q: q || undefined,
-              typeId: typeFilter === 'any' ? undefined : typeFilter,
-              yearId: period.startsWith('year:') ? period.slice(5) : undefined,
-              termId: period.startsWith('term:') ? period.slice(5) : undefined,
-              state: state === 'any' ? undefined : (state as DocumentState),
-              page,
-              pageSize: PAGE_SIZE,
-            },
-            signal,
-          ).then((contents) => contents.documents)
-        : Promise.resolve(null),
-    [folderId, q, typeFilter, period, state, page],
-  )
+  // The folder's documents, or with a search, the matches in it and below (smart or exact).
+  const docs = useApi((signal): Promise<DocumentPage | null> => {
+    if (!folderId) return Promise.resolve(null)
+    const filters = {
+      typeId: typeFilter === 'any' ? undefined : typeFilter,
+      yearId: period.startsWith('year:') ? period.slice(5) : undefined,
+      termId: period.startsWith('term:') ? period.slice(5) : undefined,
+      state: state === 'any' ? undefined : (state as DocumentState),
+      page,
+      pageSize: PAGE_SIZE,
+    }
+    if (q) {
+      return searchDocuments({ q, folderId, mode, ...filters }, signal).then((result) => ({
+        items: result.items.map((h) => h.document),
+        total: result.total,
+        hits: new Map(result.items.map((h) => [h.document.id, h])),
+        notice: result.notice ?? null,
+      }))
+    }
+    return getFolderChildren(folderId, { includeSubfolders: true, ...filters }, signal).then((contents) => ({
+      items: contents.documents.items,
+      total: contents.documents.total,
+      hits: null,
+      notice: null,
+    }))
+  }, [folderId, q, mode, typeFilter, period, state, page])
   const documents = docs.data ?? null
   const reloadDocs = docs.reload
+  const hitFor = (id: string) => documents?.hits?.get(id)
+  const openDocument = (d: DocumentListItem) => navigate(hitLink(d.id, hitFor(d.id)))
 
   // New uploads and re-processed versions move through text extraction on the server; reload to follow
   // them, for a few minutes per view (a stuck job shouldn't keep the page polling forever).
   const processing = documents?.items.some((d) => isProcessing(d.currentVersion?.processingStatus)) ?? false
-  const pollKey = [folderId, q, typeFilter, period, state, page].join('|')
+  const pollKey = [folderId, q, mode, typeFilter, period, state, page].join('|')
   const polls = useRef({ key: '', count: 0 })
   useEffect(() => {
     if (!processing) return
@@ -527,7 +548,8 @@ export function LibraryPage() {
               <Search size={16} aria-hidden />
               <input
                 value={query}
-                placeholder="Search title or doc no.…"
+                placeholder={searchPlaceholder(mode, 'Search by topic, title or doc no.…')}
+                aria-label="Search documents"
                 onChange={(e) => {
                   setQuery(e.target.value)
                   setPage(1)
@@ -538,6 +560,14 @@ export function LibraryPage() {
                   <X size={14} />
                 </button>
               )}
+              <SearchModeToggle
+                mode={mode}
+                quoted={effectiveMode(query, mode) !== mode}
+                onChange={(m) => {
+                  setMode(m)
+                  setPage(1)
+                }}
+              />
             </label>
             {folder && canManageAccess && (
               <Button onClick={() => navigate(`/library/folders/${folder.id}/access`)}>Manage access</Button>
@@ -562,8 +592,13 @@ export function LibraryPage() {
           </button>
         )}
         <span className={styles.flex} />
+        {documents?.notice && (
+          <span className={styles.searchNotice} title={documents.notice}>
+            Showing word matches only: search by meaning isn’t available right now.
+          </span>
+        )}
         <span className={styles.count}>
-          {total} document{total === 1 ? '' : 's'}
+          {documents?.hits ? `${total} result${total === 1 ? '' : 's'}` : `${total} document${total === 1 ? '' : 's'}`}
         </span>
         <div className={styles.viewToggle} role="group" aria-label="View">
           <button
@@ -628,7 +663,7 @@ export function LibraryPage() {
                 <div
                   key={d.id}
                   className={`${styles.grid} ${styles.row} ${selected.has(d.id) ? styles.rowSelected : ''}`}
-                  onClick={() => navigate(`/documents/${d.id}`)}
+                  onClick={() => openDocument(d)}
                 >
                   {canEdit ? (
                     <input
@@ -653,6 +688,7 @@ export function LibraryPage() {
                     <div className={styles.titleText}>
                       <span className={styles.docTitle}>{d.title}</span>
                       <span className={styles.meta}>{fileMeta(d)}</span>
+                      <HitSnippet hit={hitFor(d.id)} query={q} />
                     </div>
                   </div>
                   <span className={styles.cell}>{d.documentNumber ?? '—'}</span>
@@ -732,7 +768,7 @@ export function LibraryPage() {
               <div className={styles.cards}>
                 {listBody()}
                 {pageDocs.map((d) => (
-                  <button key={d.id} type="button" className={styles.card} onClick={() => navigate(`/documents/${d.id}`)}>
+                  <button key={d.id} type="button" className={styles.card} onClick={() => openDocument(d)}>
                     <span className={styles.cardHead}>
                       <FileKindIcon archived={d.state === 'Archived'} size={22} />
                       <span className={styles.docTitle}>{d.title}</span>
@@ -742,6 +778,7 @@ export function LibraryPage() {
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
+                    <HitSnippet hit={hitFor(d.id)} query={q} />
                     <span className={styles.cardChips}>
                       <TypeChip label={`${d.type.name} · ${d.type.code}`} />
                       {docPeriodChip(d)}

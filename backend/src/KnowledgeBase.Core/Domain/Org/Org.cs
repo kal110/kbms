@@ -22,6 +22,9 @@ public sealed class User : Entity, IHasTimestamps
     public List<DepartmentStaff> StaffOf { get; set; } = [];
     public List<GroupMember> Groups { get; set; } = [];
 
+    /// <summary>Their password, when people sign in to KBMS itself (no identity provider); null = none set.</summary>
+    public UserCredential? Credential { get; set; }
+
     public string Initials => string.Concat(
         DisplayName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(p => !Honorifics.Contains(p))
@@ -31,6 +34,61 @@ public sealed class User : Entity, IHasTimestamps
     // "Dr. Ana Lim" → AL, but "J. Cruz" → JC: only titles are skipped, not every abbreviation.
     private static readonly HashSet<string> Honorifics =
         new(["Dr.", "Engr.", "Prof.", "Atty.", "Mr.", "Ms.", "Mrs.", "Fr.", "Sr."], StringComparer.OrdinalIgnoreCase);
+}
+
+/// <summary>
+/// A password for signing in to KBMS itself, used while there is no identity provider (Auth:Authority
+/// empty). Administrators set it; a temporary one is replaced at the next sign-in. The hash never
+/// leaves this table.
+/// </summary>
+public sealed class UserCredential
+{
+    public const int MaxFailedSignIns = 5;
+    public static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
+
+    public Guid UserId { get; set; }
+    public User User { get; set; } = null!;
+
+    /// <summary>PasswordHasher's format: algorithm, iterations, salt and hash.</summary>
+    public required string PasswordHash { get; set; }
+
+    /// <summary>An administrator's temporary password: the next sign-in has to choose a new one.</summary>
+    public bool MustChangePassword { get; set; }
+    public int FailedSignIns { get; set; }
+    public DateTimeOffset? LockedUntil { get; set; }
+    public DateTimeOffset ChangedAt { get; set; }
+
+    /// <summary>Tokens issued before this no longer work: the password was changed or reset since.</summary>
+    public DateTimeOffset SessionsValidFrom { get; set; }
+
+    public bool IsLocked(DateTimeOffset now) => LockedUntil > now;
+
+    /// <summary>Counts a wrong password; the fifth in a row locks the account for <see cref="LockoutDuration"/>.</summary>
+    public void RecordFailedSignIn(DateTimeOffset now)
+    {
+        FailedSignIns++;
+        if (FailedSignIns < MaxFailedSignIns) return;
+        FailedSignIns = 0;
+        LockedUntil = now + LockoutDuration;
+    }
+
+    public void RecordSignIn()
+    {
+        FailedSignIns = 0;
+        LockedUntil = null;
+    }
+
+    /// <summary>A new password: clears any lockout and ends every session issued before now.</summary>
+    public void SetPassword(string hash, bool mustChange, DateTimeOffset now)
+    {
+        PasswordHash = hash;
+        MustChangePassword = mustChange;
+        FailedSignIns = 0;
+        LockedUntil = null;
+        ChangedAt = now;
+        // Whole seconds, like a token's iat: the token issued right after this change stays valid.
+        SessionsValidFrom = DateTimeOffset.FromUnixTimeSeconds(now.ToUnixTimeSeconds());
+    }
 }
 
 public sealed class Group : Entity

@@ -17,7 +17,7 @@ internal sealed class BearerSecuritySchemeTransformer : IOpenApiDocumentTransfor
             Type = SecuritySchemeType.Http,
             Scheme = "bearer",
             BearerFormat = "JWT",
-            Description = "In development, get a token from POST /api/dev/token.",
+            Description = "Get a token from POST /api/auth/sign-in, or in development from POST /api/dev/token.",
         };
         document.Security = [new OpenApiSecurityRequirement { [new OpenApiSecuritySchemeReference(Scheme, document)] = [] }];
         return Task.CompletedTask;

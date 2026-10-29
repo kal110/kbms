@@ -122,7 +122,7 @@ export async function send(method: string, path: string, options: RequestOptions
     const code = typeof problem?.code === 'string' ? problem.code : `http-${response.status}`
     const title = typeof problem?.title === 'string' ? problem.title : response.statusText || `Request failed (${response.status})`
     // The token was refused: this account has to sign in again. Other tabs and accounts are unaffected.
-    if (response.status === 401 && account && !options.token) sessionStore.markExpired(account.externalId)
+    if (response.status === 401 && account && !options.token && token) sessionStore.markExpired(account.externalId, token)
     throw new ApiError(response.status, code, title, problem)
   }
   return response

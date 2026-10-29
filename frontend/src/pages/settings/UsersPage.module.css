@@ -311,3 +311,60 @@
 .actionError {
   padding: 0 18px 12px;
 }
+
+/* Password (UserPasswordSection) */
+.passwordStatus {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.passwordActions {
+  display: flex;
+}
+
+.passwordForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.passwordRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.passwordRow > :first-child {
+  flex: 1;
+}
+
+.generate {
+  margin-top: 22px;
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.passwordGiven {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+}
+
+.passwordValue {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  user-select: all;
+}

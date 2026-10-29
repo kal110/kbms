@@ -141,6 +141,18 @@ public sealed class DocumentVersion : Entity
     public Guid? CreatedFromVersionId { get; set; }
 }
 
+/// <summary>
+/// One page of a version's extracted text, as exact search matches it: blocks joined and
+/// whitespace collapsed (<see cref="PlainText.Collapse"/>). Written by the Extract stage, one row
+/// per page (empty pages included), so a version with rows has been read.
+/// </summary>
+public sealed class VersionPage
+{
+    public Guid VersionId { get; set; }
+    public int PageNumber { get; set; }
+    public required string Text { get; set; }
+}
+
 public sealed class Collection : Entity
 {
     public required string Name { get; set; }

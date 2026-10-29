@@ -9,6 +9,7 @@ using KnowledgeBase.Core.Application.Security;
 using KnowledgeBase.Core.Application.Settings;
 using KnowledgeBase.Core.Application.Workflow;
 using KnowledgeBase.Core.Infrastructure.Ai;
+using KnowledgeBase.Core.Infrastructure.Ocr;
 using KnowledgeBase.Core.Infrastructure.Persistence;
 using KnowledgeBase.Core.Infrastructure.Persistence.Seed;
 using KnowledgeBase.Core.Infrastructure.Processing;
@@ -41,6 +42,8 @@ public static class DependencyInjection
         services.Configure<AiOptions>(config.GetSection(AiOptions.Section));
         services.Configure<ProcessingOptions>(config.GetSection(ProcessingOptions.Section));
         services.Configure<AdminSeedOptions>(config.GetSection(AdminSeedOptions.Section));
+        services.Configure<OcrOptions>(config.GetSection(OcrOptions.Section));
+        services.AddSingleton<IOcrEngine, TesseractOcrEngine>();
         services.AddSingleton<StorageUrlSigner>();
         if (string.Equals(config["Storage:Provider"], "S3", StringComparison.OrdinalIgnoreCase))
             services.AddSingleton<IObjectStorage, S3ObjectStorage>();
@@ -70,7 +73,7 @@ public static class DependencyInjection
     }
 
     /// <summary>
-    /// The background workers (processing pipeline, outbox dispatcher, housekeeping, search index). The API runs
+    /// The background workers (processing pipeline, outbox dispatcher, housekeeping, search index, OCR catch-up). The API runs
     /// them in-process for now; a dedicated Worker host can call this instead, and an MCP host
     /// simply doesn't.
     /// </summary>
@@ -80,6 +83,7 @@ public static class DependencyInjection
         services.AddHostedService<OutboxDispatcher>();
         services.AddHostedService<HousekeepingWorker>();
         services.AddHostedService<SearchIndexWorker>();
+        services.AddHostedService<OcrCatchUpWorker>();
         return services;
     }
 }

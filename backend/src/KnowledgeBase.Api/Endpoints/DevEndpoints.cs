@@ -9,7 +9,7 @@ namespace KnowledgeBase.Api.Endpoints;
 
 /// <summary>
 /// Development sign-in: lists the seeded people and issues a token for one of them, standing in
-/// for the university IdP. Mapped only in Development when no Auth:Authority is configured.
+/// for real accounts. Mapped only in Development when no Auth:Authority is configured.
 /// </summary>
 public static class DevEndpoints
 {
@@ -20,7 +20,7 @@ public static class DevEndpoints
     public static RouteGroupBuilder MapDevEndpoints(this RouteGroupBuilder api, IHostEnvironment env)
     {
         var auth = ((IEndpointRouteBuilder)api).ServiceProvider.GetRequiredService<IOptions<AuthOptions>>().Value;
-        if (!env.IsDevelopment() || !auth.UsesDevTokens) return api;
+        if (!env.IsDevelopment() || !auth.IssuesTokens) return api;
 
         var dev = api.MapGroup("/dev").AllowAnonymous().WithTags("Development");
 
@@ -28,7 +28,7 @@ public static class DevEndpoints
                 await LoadAsync(db.Users.Where(u => u.IsActive).OrderBy(u => u.DisplayName), ct))
             .WithSummary("Seeded people you can sign in as");
 
-        dev.MapPost("/token", async (DevTokenRequest request, KbDbContext db, DevTokenIssuer issuer, CancellationToken ct) =>
+        dev.MapPost("/token", async (DevTokenRequest request, KbDbContext db, TokenIssuer issuer, CancellationToken ct) =>
             {
                 if (string.IsNullOrWhiteSpace(request.ExternalId))
                     throw new ValidationAppException(nameof(request.ExternalId), "Pick a user to sign in as.");

@@ -15,6 +15,9 @@ public interface IIdentitySource
     /// <summary>The IdP subject (User.ExternalId), or null when anonymous.</summary>
     string? ExternalId { get; }
     string? IpAddress { get; }
+
+    /// <summary>When the caller's token was issued (its iat), or null when unknown.</summary>
+    DateTimeOffset? IssuedAt { get; }
 }
 
 /// <summary>A role the user holds and the unit it is scoped to.</summary>
@@ -77,9 +80,13 @@ public sealed class CurrentUser(IIdentitySource identity, KbDbContext db) : ICur
 
         var user = await db.Users.AsNoTracking()
             .Where(u => u.ExternalId == externalId && u.IsActive)
-            .Select(u => new { u.Id, u.DisplayName })
+            .Select(u => new { u.Id, u.DisplayName, SessionsValidFrom = (DateTimeOffset?)u.Credential!.SessionsValidFrom })
             .SingleOrDefaultAsync(ct)
             ?? throw new UnauthenticatedException("The signed-in account isn't registered in the knowledge base.");
+
+        // A password change or reset ends the sessions from before it.
+        if (identity.IssuedAt < user.SessionsValidFrom)
+            throw new UnauthenticatedException("The password for this account changed, so this session ended. Sign in again.");
 
         var roles = await db.RoleAssignments.AsNoTracking()
             .Where(r => r.UserId == user.Id && r.IsActive)

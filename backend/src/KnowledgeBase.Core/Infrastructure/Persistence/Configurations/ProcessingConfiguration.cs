@@ -1,5 +1,7 @@
+using KnowledgeBase.Core.Domain.Assistant;
 using KnowledgeBase.Core.Domain.Audit;
 using KnowledgeBase.Core.Domain.Library;
+using KnowledgeBase.Core.Domain.Org;
 using KnowledgeBase.Core.Domain.Processing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -63,6 +65,29 @@ internal sealed class AiQueryAuditConfiguration : IEntityTypeConfiguration<AiQue
         b.Property(x => x.QuestionText).HasMaxLength(2000);
         b.HasIndex(x => x.AskedAt).HasMethod("brin");
         b.HasIndex(x => new { x.UserId, x.AskedAt });
+    }
+}
+
+internal sealed class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
+{
+    public void Configure(EntityTypeBuilder<Conversation> b)
+    {
+        b.Property(x => x.Title).HasMaxLength(120);
+        b.HasOne<User>().WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Turns).WithOne().HasForeignKey(t => t.ConversationId).OnDelete(DeleteBehavior.Cascade);
+        b.HasIndex(x => new { x.UserId, x.UpdatedAt });
+    }
+}
+
+internal sealed class ConversationTurnConfiguration : IEntityTypeConfiguration<ConversationTurn>
+{
+    public void Configure(EntityTypeBuilder<ConversationTurn> b)
+    {
+        b.Property(x => x.Question).HasMaxLength(2000);
+        b.Property(x => x.Scope).HasMaxLength(20);
+        b.Property(x => x.Error).HasMaxLength(1000);
+        b.Property(x => x.Model).HasMaxLength(80);
+        b.HasIndex(x => new { x.ConversationId, x.Number }).IsUnique();
     }
 }
 

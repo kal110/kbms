@@ -66,7 +66,7 @@ public sealed partial class UserAdminService(
         var externalId = request.ExternalId?.Trim() ?? "";
         var errors = new FieldErrors();
         errors.Check(externalId.Length is > 0 and <= 200 && !externalId.Any(char.IsWhiteSpace), "externalId",
-            "Enter the sign-in id from the identity provider: no spaces, at most 200 characters.");
+            "Enter the sign-in id they'll type (or the identity provider's id): no spaces, at most 200 characters.");
         ValidateName(request.DisplayName, errors);
         ValidateEmail(request.Email, errors);
         ValidateTitle(request.Title, errors);
@@ -123,6 +123,30 @@ public sealed partial class UserAdminService(
         audit.Record("user.updated", "user", user.Id, metadata: new { request.DisplayName, request.Email, request.Title, request.Active });
         await db.SaveChangesAsync(ct);
         if (request.Active == true) await folders.SyncAsync(ct);
+        return await LoadAsync(user.Id, ct);
+    }
+
+    /// <summary>
+    /// Sets or resets someone's password for signing in to KBMS (no identity provider). MustChange
+    /// makes it temporary: they choose their own at the next sign-in. Either way it clears a lockout
+    /// and ends their open sessions. Your own goes through PasswordSignInService.ChangePasswordAsync.
+    /// </summary>
+    public async Task<UserAdminDto> SetPasswordAsync(Guid id, SetPasswordRequest request, CancellationToken ct = default)
+    {
+        var me = await currentUser.GetAsync(ct);
+        me.RequireAdmin();
+        var user = await db.Users.Include(u => u.Credential).SingleOrDefaultAsync(u => u.Id == id, ct) ?? throw new NotFoundException("User", id);
+        if (user.Id == me.UserId)
+            throw new BusinessRuleException("own-password", "Change your own password from your account menu.",
+                "That asks for your current password, so no one else can change it from your open session.");
+        if (PasswordPolicy.Problem(request.Password, user.ExternalId) is { } problem)
+            throw new ValidationAppException("password", problem);
+
+        var hash = PasswordHasher.Hash(request.Password);
+        user.Credential ??= new UserCredential { PasswordHash = hash };
+        user.Credential.SetPassword(hash, request.MustChange, clock.GetUtcNow());
+        audit.Record("user.password-set", "user", user.Id, metadata: new { request.MustChange });
+        await db.SaveChangesAsync(ct);
         return await LoadAsync(user.Id, ct);
     }
 
@@ -262,8 +286,13 @@ public sealed partial class UserAdminService(
         var colleges = await db.Colleges.AsNoTracking().ToDictionaryAsync(c => c.Id, c => new UnitRefDto(c.Id, c.Code, c.Name), ct);
         var departments = await db.Departments.AsNoTracking().ToDictionaryAsync(d => d.Id, ct);
         var programs = await db.Programs.AsNoTracking().Where(p => p.IsActive).ToDictionaryAsync(p => p.Id, ct);
+        var passwords = await db.UserCredentials.AsNoTracking().Where(c => ids.Contains(c.UserId)).ToDictionaryAsync(c => c.UserId, ct);
+        var now = clock.GetUtcNow();
 
         UnitRefDto Dept(Department d) => new(d.Id, d.Code, d.Name);
+        UserPasswordDto? PasswordOf(Guid userId) => passwords.TryGetValue(userId, out var c)
+            ? new UserPasswordDto(c.MustChangePassword, c.IsLocked(now) ? c.LockedUntil : null, c.ChangedAt)
+            : null;
         UnitRefDto? ScopeOf(RoleAssignment r) => r.ScopeType switch
         {
             RoleScope.College when r.ScopeId is { } id => colleges.GetValueOrDefault(id),
@@ -285,7 +314,8 @@ public sealed partial class UserAdminService(
                     .Select(Membership).OfType<ProgramMembershipDto>().ToList(),
                 staff.Where(s => s.UserId == u.Id && departments.ContainsKey(s.DepartmentId))
                     .Select(s => new StaffMembershipDto(Dept(departments[s.DepartmentId]), s.Position)).ToList(),
-                u.CreatedAt))
+                u.CreatedAt,
+                PasswordOf(u.Id)))
             .ToList();
     }
 

@@ -1,5 +1,6 @@
 using KnowledgeBase.Core.Common;
 using KnowledgeBase.Core.Domain.Access;
+using KnowledgeBase.Core.Domain.Assistant;
 using KnowledgeBase.Core.Domain.Audit;
 using KnowledgeBase.Core.Domain.Calendar;
 using KnowledgeBase.Core.Domain.DocumentTypes;
@@ -20,6 +21,7 @@ public sealed class KbDbContext(DbContextOptions<KbDbContext> options, TimeProvi
 {
     // Org & identity
     public DbSet<User> Users => Set<User>();
+    public DbSet<UserCredential> UserCredentials => Set<UserCredential>();
     public DbSet<Group> Groups => Set<Group>();
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
     public DbSet<College> Colleges => Set<College>();
@@ -49,6 +51,7 @@ public sealed class KbDbContext(DbContextOptions<KbDbContext> options, TimeProvi
     public DbSet<Folder> Folders => Set<Folder>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
+    public DbSet<VersionPage> VersionPages => Set<VersionPage>();
     public DbSet<Collection> Collections => Set<Collection>();
     public DbSet<CollectionDocument> CollectionDocuments => Set<CollectionDocument>();
     public DbSet<Tag> Tags => Set<Tag>();
@@ -75,6 +78,8 @@ public sealed class KbDbContext(DbContextOptions<KbDbContext> options, TimeProvi
     public DbSet<IndexBuild> IndexBuilds => Set<IndexBuild>();
     public DbSet<VersionIndexEntry> VersionIndexEntries => Set<VersionIndexEntry>();
     public DbSet<AiQueryAudit> AiQueryAudits => Set<AiQueryAudit>();
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+    public DbSet<ConversationTurn> ConversationTurns => Set<ConversationTurn>();
     public DbSet<IdempotencyRecord> IdempotencyRecords => Set<IdempotencyRecord>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 

@@ -4,14 +4,14 @@
  */
 
 export interface paths {
-    "/api/dev/users": {
+    "/api/auth/options": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Seeded people you can sign in as */
+        /** How people sign in to this API */
         get: {
             parameters: {
                 query?: never;
@@ -27,7 +27,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DevUser"][];
+                        "application/json": components["schemas"]["SignInOptions"];
                     };
                 };
             };
@@ -40,7 +40,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/dev/token": {
+    "/api/auth/sign-in": {
         parameters: {
             query?: never;
             header?: never;
@@ -49,7 +49,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Sign in as a seeded person (development only) */
+        /**
+         * Sign in with a sign-in id (or email) and password
+         * @description A temporary password answers 422 password-change-required: send it again with newPassword.
+         */
         post: {
             parameters: {
                 query?: never;
@@ -59,7 +62,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "application/json": components["schemas"]["DevTokenRequest"];
+                    "application/json": components["schemas"]["PasswordSignInRequest"];
                 };
             };
             responses: {
@@ -69,11 +72,126 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DevTokenResponse"];
+                        "application/json": components["schemas"]["TokenResponse"];
+                    };
+                };
+                /** @description Unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Unprocessable Entity */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+                /** @description Too Many Requests */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
                     };
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change your password
+         * @description Returns a new token for this session; the account's other sessions end.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangePasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TokenResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set or reset someone's password
+         * @description mustChange makes it temporary. Clears a lockout and ends their open sessions.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SetPasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserAdminDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -207,6 +325,8 @@ export interface paths {
                     YearId?: string;
                     TermId?: string;
                     FolderId?: string;
+                    State?: components["schemas"]["DocumentState"];
+                    Mode?: string;
                     Page?: number;
                     PageSize?: number;
                 };
@@ -310,6 +430,82 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dev/users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Seeded people you can sign in as */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DevUser"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dev/token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in as a seeded person (development only) */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DevTokenRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DevTokenResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -3195,6 +3391,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{id}/versions/{versionId}/pages/{page}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One page of a version's extracted text (View): previews files the browser can't draw, such as Word documents */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                    versionId: string;
+                    page: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VersionPageText"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/{id}/archive": {
         parameters: {
             query?: never;
@@ -4845,6 +5081,15 @@ export interface paths {
                         "application/problem+json": components["schemas"]["HttpValidationProblemDetails"];
                     };
                 };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
                 /** @description Too Many Requests */
                 429: {
                     headers: {
@@ -4954,6 +5199,121 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/conversations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your assistant conversations, most recent first */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    pageSize?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PagedResultOfConversationSummary"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/conversations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One of your conversations with its questions and answers (sources re-checked against your access) */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConversationDetail"];
+                    };
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /** Delete one of your conversations */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Not Found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/problem+json": components["schemas"]["ProblemDetails"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -5109,6 +5469,8 @@ export interface components {
             scope: string;
             sources: components["schemas"]["AssistantSource"][];
             sufficient: boolean;
+            /** Format: uuid */
+            conversationId: string;
             type?: string;
         };
         AssistantSource: {
@@ -5131,6 +5493,7 @@ export interface components {
             snippet: string;
             /** Format: double */
             score: number;
+            passage?: null | string;
         };
         AssistantStatus: {
             enabled: boolean;
@@ -5184,6 +5547,10 @@ export interface components {
             ipAddress: null | string;
             metadata: null | components["schemas"]["JsonElement"];
         };
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
         /** @enum {unknown} */
         ChatProvider: "Local" | "Anthropic";
         ChatRequest: {
@@ -5197,6 +5564,8 @@ export interface components {
             academicYearId?: null | string;
             /** Format: uuid */
             academicTermId?: null | string;
+            /** Format: uuid */
+            conversationId?: null | string;
         };
         ChecklistItem: {
             key: string;
@@ -5228,6 +5597,40 @@ export interface components {
             /** Format: uuid */
             documentId: null | string;
             changeDescription: null | string;
+        };
+        ConversationDetail: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            turns: components["schemas"]["ConversationTurnDto"][];
+        };
+        ConversationSummary: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            /** Format: int32 */
+            turns: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ConversationTurnDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            number: number;
+            question: string;
+            scope: string;
+            /** Format: date-time */
+            askedAt: string;
+            answer: null | components["schemas"]["AssistantAnswer"];
+            error: null | string;
+            sources: components["schemas"]["AssistantSource"][];
         };
         CorpusStats: {
             /** Format: int32 */
@@ -5735,6 +6138,7 @@ export interface components {
             programs: components["schemas"]["ProgramMembershipDto"][];
             departments: components["schemas"]["StaffMembershipDto"][];
             capabilities: string[];
+            hasPassword: boolean;
         };
         MyCourseDto: {
             course: components["schemas"]["CourseRefDto"];
@@ -5873,6 +6277,15 @@ export interface components {
             /** Format: int32 */
             total: number;
         };
+        PagedResultOfConversationSummary: {
+            items: components["schemas"]["ConversationSummary"][];
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: int32 */
+            total: number;
+        };
         PagedResultOfDocumentListItem: {
             items: components["schemas"]["DocumentListItem"][];
             /** Format: int32 */
@@ -5958,6 +6371,11 @@ export interface components {
             text: string;
             /** Format: double */
             score: number;
+        };
+        PasswordSignInRequest: {
+            login: string;
+            password: string;
+            newPassword: null | string;
         };
         PeriodRef: {
             /** Format: uuid */
@@ -6287,6 +6705,14 @@ export interface components {
             snippet: null | string;
             /** Format: double */
             score: number;
+            match?: components["schemas"]["SearchMatch"];
+            /** Format: int32 */
+            page?: null | number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            pageMatches: number;
         };
         SearchIndexStatus: {
             aiEnabled: boolean;
@@ -6310,6 +6736,11 @@ export interface components {
             /** Format: int32 */
             pendingVersions: number;
         };
+        /**
+         * @default Details
+         * @enum {unknown}
+         */
+        SearchMatch: "Details" | "Text" | "Meaning";
         SearchResult: {
             query: string;
             items: components["schemas"]["SearchHit"][];
@@ -6320,6 +6751,12 @@ export interface components {
             /** Format: int32 */
             pageSize: number;
             semantic: boolean;
+            mode: string;
+            notice?: null | string;
+        };
+        SetPasswordRequest: {
+            password: string;
+            mustChange: boolean;
         };
         SetTeachingCourseRequest: {
             /** Format: uuid */
@@ -6335,6 +6772,17 @@ export interface components {
             sections: null | string[];
             /** Format: uuid */
             replacesCourseId: null | string;
+        };
+        SignedInUser: {
+            externalId: string;
+            displayName: string;
+            initials: string;
+            email: null | string;
+            title: null | string;
+        };
+        SignInOptions: {
+            passwordSignIn: boolean;
+            devSignIn: boolean;
         };
         StaffMemberDto: {
             person: components["schemas"]["PersonDto"];
@@ -6596,6 +7044,13 @@ export interface components {
             comment: null | string;
             versions: components["schemas"]["WorkflowVersionRef"][];
         };
+        TokenResponse: {
+            accessToken: string;
+            tokenType: string;
+            /** Format: date-time */
+            expiresAt: string;
+            user: components["schemas"]["SignedInUser"];
+        };
         TypeRef: {
             /** Format: uuid */
             id: string;
@@ -6726,6 +7181,14 @@ export interface components {
             departments: components["schemas"]["StaffMembershipDto"][];
             /** Format: date-time */
             createdAt: string;
+            password: null | components["schemas"]["UserPasswordDto"];
+        };
+        UserPasswordDto: {
+            mustChange: boolean;
+            /** Format: date-time */
+            lockedUntil: null | string;
+            /** Format: date-time */
+            changedAt: string;
         };
         /** @enum {unknown} */
         UserRoleFilter: "Admin" | "Vpaf" | "Dean" | "Supervisor" | "Head" | "Faculty" | "Staff" | "None" | null;
@@ -6758,6 +7221,17 @@ export interface components {
             /** Format: int32 */
             createdFromVersionNumber: null | number;
             approvedInSubmission: null | string;
+        };
+        VersionPageText: {
+            /** Format: uuid */
+            versionId: string;
+            /** Format: int32 */
+            versionNumber: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pages: number;
+            text: string;
         };
         /** @enum {unknown} */
         VersionProcessingStatus: "Pending" | "Processing" | "Ready" | "Failed" | "Indexed";

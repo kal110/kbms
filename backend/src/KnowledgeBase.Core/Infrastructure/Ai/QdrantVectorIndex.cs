@@ -57,6 +57,9 @@ public sealed class QdrantVectorIndex(HttpClient http, IOptions<AiOptions> optio
                 new JsonObject { ["field_name"] = field, ["field_schema"] = "keyword" }, ct)).Dispose();
         (await SendAsync(HttpMethod.Put, $"/collections/{collection}/index?wait=true",
             new JsonObject { ["field_name"] = "pipeline_version", ["field_schema"] = "integer" }, ct)).Dispose();
+        // The library's search by meaning; collections built before it filter without the index.
+        (await SendAsync(HttpMethod.Put, $"/collections/{collection}/index?wait=true",
+            new JsonObject { ["field_name"] = "is_current", ["field_schema"] = "bool" }, ct)).Dispose();
     }
 
     public async Task DeleteCollectionAsync(string collection, CancellationToken ct = default) =>
@@ -188,7 +191,11 @@ public sealed class QdrantVectorIndex(HttpClient http, IOptions<AiOptions> optio
         {
             new JsonObject { ["key"] = "acl_principals", ["match"] = new JsonObject { ["any"] = new JsonArray(f.PrincipalKeys.Select(k => (JsonNode)k).ToArray()) } },
         };
-        if (f.Scope == KnowledgeScopes.MyDrafts)
+        if (f.Scope == KnowledgeScopes.Current)
+        {
+            must.Add(Match("is_current", true));
+        }
+        else if (f.Scope == KnowledgeScopes.MyDrafts)
         {
             must.Add(Match("state", "draft"));
             must.Add(Match("owner_id", (f.OwnerId ?? Guid.Empty).ToString()));

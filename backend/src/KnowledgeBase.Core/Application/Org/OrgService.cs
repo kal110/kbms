@@ -51,8 +51,9 @@ public sealed class OrgService(KbDbContext db, ICurrentUser currentUser)
             .ToList();
 
         var (persona, label) = Describe(me, roles, memberships, staffOf, departments);
+        var hasPassword = await db.UserCredentials.AnyAsync(c => c.UserId == me.UserId, ct);
         return new MeDto(user.Id, user.ExternalId, user.DisplayName, user.Initials, user.Email, user.Title,
-            persona, label, roles, memberships, staffOf, CapabilitiesOf(me));
+            persona, label, roles, memberships, staffOf, CapabilitiesOf(me), hasPassword);
     }
 
     public async Task<OrgTreeDto> GetTreeAsync(CancellationToken ct = default)

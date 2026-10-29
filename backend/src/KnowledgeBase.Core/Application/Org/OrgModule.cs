@@ -1,3 +1,4 @@
+using KnowledgeBase.Core.Application.Security;
 using KnowledgeBase.Core.Infrastructure.Persistence.Seed;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,6 +13,7 @@ public static class OrgModule
         services.AddScoped<OrgAdminService>();
         services.AddScoped<OrgStructureService>();
         services.AddScoped<UserAdminService>();
+        services.AddScoped<PasswordSignInService>();
         services.AddScoped<TeachingLoadService>();
         services.AddScoped<ISeedContributor, ReferenceSeed>();
         return services;

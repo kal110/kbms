@@ -1,3 +1,4 @@
+using KnowledgeBase.Core.Application.Abstractions;
 using KnowledgeBase.Core.Infrastructure.Ai;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -32,6 +33,8 @@ public static class AiModule
 
         services.AddScoped<KnowledgeRetriever>();
         services.AddScoped<AssistantService>();
+        services.AddScoped<ConversationService>();
+        services.AddScoped<ISemanticSearch, SemanticDocumentSearch>();
         return services;
     }
 }

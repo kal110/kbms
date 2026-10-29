@@ -87,6 +87,9 @@ export const getUserForAdmin = (id: string, signal?: AbortSignal) => api.get<Use
 export const createUser = (body: CreateUserRequest) => api.post<UserAdminDto>('/admin/users', body)
 /** Null leaves a field unchanged; "" clears email or title; active false deactivates. */
 export const updateUser = (id: string, body: UpdateUserRequest) => api.patch<UserAdminDto>(`/admin/users/${id}`, body)
+/** Sets or resets their password; mustChange makes it temporary. Ends their open sessions. */
+export const setUserPassword = (id: string, password: string, mustChange: boolean) =>
+  api.put<UserAdminDto>(`/admin/users/${id}/password`, { password, mustChange })
 export const addAdministrator = (userId: string) => api.post<UserAdminDto>('/admin/administrators', { userId })
 export const removeAdministrator = (userId: string) => api.delete<UserAdminDto>(`/admin/administrators/${userId}`)
 /** Moves the VPAF role to this person. */

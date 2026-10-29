@@ -132,9 +132,13 @@ export const sessionStore = {
     setState({ ...state, accounts: state.accounts.map((a) => (a === current ? { ...a, ...profile } : a)) }, true)
   },
 
-  markExpired(externalId: string) {
+  /**
+   * The API refused `token`. Only that token: a request still carrying the old one can come back
+   * after a password change has already stored the new one.
+   */
+  markExpired(externalId: string, token: string) {
     const current = state.accounts.find((a) => a.externalId === externalId)
-    if (!current || current.expired) return
+    if (!current || current.expired || current.token !== token) return
     setState({ ...state, accounts: state.accounts.map((a) => (a === current ? { ...a, expired: true } : a)) }, true)
   },
 

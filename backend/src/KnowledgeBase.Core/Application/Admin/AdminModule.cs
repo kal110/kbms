@@ -11,6 +11,7 @@ public static class AdminModule
         services.AddScoped<ProcessingAdminService>();
         services.AddScoped<AuditQueryService>();
         services.AddScoped<DocumentProcessor>();
+        services.AddScoped<VersionPageBackfill>();
         return services;
     }
 }

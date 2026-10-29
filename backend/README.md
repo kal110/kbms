@@ -40,7 +40,7 @@ cd backend
 dotnet tool restore
 
 # Once: copy the Development settings (git-ignored) and put your Postgres password in ConnectionStrings:Kbms.
-# The Docker image is built from src/ and needs this file too (dev sign-in and storage signing keys).
+# The Docker image leaves it out (.dockerignore); compose passes the keys as environment variables.
 Copy-Item src/KnowledgeBase.Api/appsettings.Development.example.json src/KnowledgeBase.Api/appsettings.Development.json
 
 dotnet run --project src/KnowledgeBase.Api
@@ -87,48 +87,73 @@ Traefik isn't involved. Browsers upload and download straight to S3, so the serv
 (25480) and S3 (25490) on the LAN (`KBMS_BIND_ADDRESS=0.0.0.0`), and `KBMS_WEB_URL` and
 `KBMS_S3_PUBLIC_URL` carry that address. PostgreSQL and the RustFS console stay on the server
 (`KBMS_ADMIN_BIND_ADDRESS=127.0.0.1`). The template also notes the domain-and-HTTPS variant for
-later. Until the university IdP is configured, the server runs the demo sign-in, so anyone who can
-reach it can sign in as any account; limit who reaches those two ports.
+later. The server runs Production, so there is no demo sign-in: people sign in with passwords (see
+"Signing in" below), starting with `admin` and `KBMS_ADMIN_PASSWORD`.
 
 Opened by an IP address over plain HTTP, the page isn't a secure context, so browser APIs that need
 HTTPS (such as `crypto.randomUUID`) are missing; the web app must not depend on them.
 
-### Signing in during development
+### Signing in
 
-There is no IdP yet. `GET /api/dev/users` lists the active people and `POST /api/dev/token`
-issues a JWT for one of them:
+There is no university IdP yet, so KBMS checks passwords itself and signs its own JWTs with
+`Auth:SigningKey` (`KBMS_SIGNING_KEY`; Production refuses the example key):
 
 ```http
-POST http://localhost:5259/api/dev/token
+POST http://localhost:5259/api/auth/sign-in
 Content-Type: application/json
 
-{ "externalId": "admin" }
+{ "login": "admin", "password": "…", "newPassword": null }
 ```
 
-Send the returned `accessToken` as `Authorization: Bearer …`. A fresh database has one account,
-`admin` (System Administrator); everyone else signs in with the id the admin gives them under
+Send the returned `accessToken` as `Authorization: Bearer …` (it lasts `Auth:TokenHours`, 8).
+`login` is the sign-in id (`users.external_id`, any case) or an email only one active person has.
+
+- **Passwords come from an administrator.** Settings › Users › a person › Set password gives them a
+  temporary one (`PUT /api/admin/users/{id}/password`). Their first sign-in answers 422
+  `password-change-required`; the same request with `newPassword` sets their own and signs them in.
+  The first administrator's comes from `Database:Admin:Password` (`KBMS_ADMIN_PASSWORD`), applied
+  while `admin` has none. There is no email reset: an administrator sets a new one.
+- **Changing your own** (`POST /api/auth/password`, account menu › Change password) needs the current
+  one and returns a new token.
+- **Sessions end** when a password is set or changed: `user_credentials.sessions_valid_from` turns
+  away older tokens (401). Deactivating someone ends theirs too.
+- **Guessing:** five wrong passwords in a row lock the account for 15 minutes (429
+  `sign-in-locked`; a new password unlocks it), and each client address gets 10 attempts a minute.
+  Hashes are PBKDF2-HMAC-SHA512 (210,000 iterations) in `user_credentials`, apart from `users`.
+- **Locked out as the only administrator:** delete their `user_credentials` row and restart; the
+  seed applies `Database:Admin:Password` again.
+
+In Development there is also the pick-a-person sign-in: `GET /api/dev/users` lists the active
+people and `POST /api/dev/token` (`{ "externalId": "admin" }`) issues a token for one of them, no
+password. `GET /api/auth/options` tells the frontend which of the two to offer.
+
+A fresh database has one account, `admin` (System Administrator); the admin adds everyone else under
 Settings › Users. The admin manages structure and access but doesn't open documents: add a library
 folder, then share it under Manage access so people can upload into it.
 
-The frontend's sign-in page uses these two endpoints and can keep several accounts signed in at once,
-each tab working as one of them (see `frontend/README.md`). Tokens are stateless, so nothing on the
-API side tracks the accounts.
+The frontend's sign-in page can keep several accounts signed in at once, each tab working as one of
+them (see `frontend/README.md`).
 
-In production set `Auth:Authority` (OIDC issuer) and `Auth:Audience`; the dev endpoints are then
-not mapped and the token's `sub` must match `users.external_id`.
+With an IdP, set `Auth:Authority` (OIDC issuer) and `Auth:Audience`: the API then trusts its tokens
+(their `sub` must match `users.external_id`), and neither password nor dev sign-in is mapped.
 
 ## Configuration
 
 | Key | Default | Notes |
 |---|---|---|
 | `ConnectionStrings:Kbms` | — | Required. Use user-secrets or an environment variable |
-| `Auth:Authority`, `Auth:Audience` | empty, `kbms-api` | Empty authority = dev tokens (Development only) |
-| `Auth:DevSigningKey` | dev value | Development only |
+| `Auth:Authority`, `Auth:Audience` | empty, `kbms-api` | Empty authority = KBMS signs its own tokens: password sign-in, plus the dev sign-in in Development |
+| `Auth:SigningKey`, `Auth:TokenHours` | dev value, `8` | Signs those tokens (32+ characters; `Auth:DevSigningKey` is its earlier name). Production refuses the example key |
+| `Database:Admin:Password` | empty | The `admin` account's first password, applied while it has none; changed at the first sign-in |
 | `Storage:Provider` | `Local` | `Local` (files on disk, served by the API) or `S3` |
 | `Storage:LocalRoot`, `Storage:SigningKey`, `Storage:PublicBaseUrl` | `storage`, dev values | Local store: files under `src/KnowledgeBase.Api/storage` (git-ignored), and the HMAC key and API base URL for its signed URLs |
 | `Storage:S3:ServiceUrl`, `Storage:S3:PublicUrl` | empty | The S3 endpoint the API uses, and the one browsers use for presigned URLs. Signatures include the host, so in Docker they differ (`http://s3:9000` vs `http://localhost:25490`). Empty ServiceUrl = AWS S3 in `Storage:S3:Region` |
 | `Storage:S3:Bucket`, `AccessKey`, `SecretKey`, `CreateBucket` | `kbms`, empty, empty, `false` | Empty keys use the AWS default credential chain. Upload URLs sign `If-None-Match: *`, so a link can't replace a stored file |
 | `Processing:WorkersEnabled` | `true` | Runs the pipeline, outbox and housekeeping workers in the API |
+| `Ocr:Enabled` | `true` | OCR of scanned PDF pages and PNG/JPEG uploads with Tesseract; see [OCR](#ocr). Without Tesseract and pdftoppm on the host it reports itself off |
+| `Ocr:Languages`, `Dpi`, `MinWordConfidence` | `eng+fil`, 300, 30 | Tesseract language codes (each needs its `tesseract-ocr-<code>` package), the resolution PDF pages are rendered at, and the confidence below which a word is dropped |
+| `Ocr:Parallelism`, `PageTimeoutSeconds`, `MaxPages` | 0 (half the cores, at most 4), 120, 200 | Pages read at once, the time one page may take, and the pages read per document |
+| `Ocr:TesseractPath`, `PdfToPpmPath` | `tesseract`, `pdftoppm` | The programs, when they aren't on the PATH |
 | `Ai:Enabled` | `false` (`true` in Development and Docker) | Chunk/Embed/Index stages, semantic search and the assistant; see [AI](#ai-semantic-search-and-the-assistant) |
 | `Ai:Embedding:Endpoint`, `Model`, `Dimensions` | `http://localhost:11434/v1` (Development: 25434, the Docker Ollama), `bge-m3`, `1024` | Any OpenAI-compatible `/embeddings` endpoint (`ApiKey` if it needs one). Changing the model or dimensions starts a new index build |
 | `Ai:VectorStore:Url`, `ApiKey`, `CollectionAlias` | `http://localhost:6333` (Development: 25463, the Docker Qdrant), empty, `kb_chunks` | Qdrant |
@@ -224,11 +249,14 @@ memory, which it shares with `bge-m3`: `qwen3.5:4b` for about 6 GB, `qwen3.5:2b`
    (`cell | cell | cell`), Docstrum blocks and reading order handle the rest, running headers and
    page numbers are dropped, and blocks are typed as headings, paragraphs, list items or tables.
    DOCX, Markdown, text and CSV give the same blocks. Pages with almost no text but an image are
-   flagged for OCR (no OCR engine yet). Writes `derived/{versionId}/pages-p{n}.jsonl`.
-2. Chunk: structure first. Units (headings, paragraphs, list items, table rows) are packed into
+   flagged for OCR. Writes `derived/{versionId}/pages-p{n}.jsonl`.
+2. OCR: the flagged pages, and PNG/JPEG uploads, are read by Tesseract (see [OCR](#ocr)) and replace
+   what Extract found on them. Writes `ocr-p{n}.jsonl`, all pages, which becomes the version's text.
+3. Chunk: structure first. Units (headings, paragraphs, list items, table rows) are packed into
    500–800-token chunks that stay inside their section, with 80 tokens of sentence overlap when a
-   section continues. Each chunk keeps its pages and heading path. Writes `chunks-p{n}.jsonl`.
-3. Embed and index: title + section + passage is embedded, upserted with a BM25 sparse vector under a
+   section continues. Each chunk keeps its pages and heading path. Writes `chunks-p{n}.jsonl`
+   (`chunks-p{n}-ocr.jsonl` when cut from OCR text, so chunks cut before OCR are never reused).
+4. Embed and index: title + section + passage is embedded, upserted with a BM25 sparse vector under a
    deterministic UUIDv5 point id, and the payload carries the ACL principals and publication state.
 
 If Ollama or Qdrant is down, the job still finishes ("deferred") and the version stays Ready. The
@@ -252,11 +280,36 @@ user (429 `rate-limited` with `Retry-After`). In Docker, nginx passes the chat s
 and waits up to 6 minutes for it, longer than its 60-second default, because a local model that has
 to load first can stay silent for a while after the `sources` event.
 
+### OCR
+
+Scanned pages and photos of documents are read by Tesseract 5 (`Infrastructure/Ocr`), on the CPU and
+offline. The API's Docker image installs it with English, Filipino and page-orientation data, and
+poppler's `pdftoppm`.
+
+- **What is read:** a PDF page with less than `Ai:Chunking:LowTextChars` characters of text and an
+  image (or no text at all), and every PNG or JPEG upload. Pages with a text layer are never
+  rendered, so born-digital PDFs cost nothing extra.
+- **How:** `pdftoppm` renders the page in grey at `Ocr:Dpi`, and Tesseract reads it with orientation
+  detection (`--psm 1`), so sideways and upside-down scans read too. Its TSV output becomes the same
+  blocks as Extract's: Tesseract's paragraphs, headings by line height or capitals, list items by
+  their markers. Words under `Ocr:MinWordConfidence` and page numbers in the margins are dropped.
+- **Cost:** a second or two a page, `Ocr:Parallelism` pages at once. A 5-page work plan printed to
+  images at 200 dpi (no text layer) came back with 99% of its words in 6.5 seconds.
+- **Job notes:** the OCR stage records the engine, pages, characters, mean word confidence (below
+  about 70 the scan is poor and search may miss words), time, and any pages that failed or were over
+  `Ocr:MaxPages`. A page OCR can't read keeps its extracted text; when no page could be read the
+  stage fails and the job retries, then waits in Admin → Processing for a manual retry.
+- **Without Tesseract** (e.g. an API on a Windows host) the stage records "skipped: OCR engine not
+  configured" with the reason. When an API starts with OCR available, `OcrCatchUpWorker` requeues
+  every finished job that skipped OCR that way, and images processed before OCR existed, so earlier
+  scans are read and indexed without a pipeline-version bump.
+- **On a Windows host**, install Tesseract (the UB Mannheim build, with the Filipino data) and poppler,
+  and set `Ocr:TesseractPath` and `Ocr:PdfToPpmPath` unless both are on the PATH.
+
 ## What is designed but not built yet
 
 | Designed | Now |
 |---|---|
-| OCR (OCRmyPDF + Tesseract) | Low-text pages are flagged; the OCR stage records "skipped: OCR engine not configured" |
 | RabbitMQ between API and workers | Transactional outbox + in-process dispatcher (`IOutboxHandler`) |
 | Separate Worker host | Workers run inside the API (`AddKnowledgeBaseWorkers()`) |
 | SIS calendar sync | `POST /api/settings/academic-terms/sync` → 501 |
