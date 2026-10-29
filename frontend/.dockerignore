@@ -1,0 +1,6 @@
+node_modules/
+dist/
+# Local Vite settings point at a local API; the image gets VITE_API_BASE_URL as a build arg instead.
+.env
+.env.*
+*.log

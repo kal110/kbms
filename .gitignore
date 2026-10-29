@@ -1,0 +1,6 @@
+# compose.yaml overrides (passwords, keys); .env.example is the committed template.
+.env
+# The API's local settings hold the Postgres password; appsettings.Development.example.json is the committed template.
+backend/src/KnowledgeBase.Api/appsettings.Development.json
+# Test documents stay out of the repo.
+samples/

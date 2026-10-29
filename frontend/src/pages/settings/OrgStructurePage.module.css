@@ -1,0 +1,247 @@
+/* Settings → Colleges & departments: the unit tree + edit drawer, same layout as Submission types. */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.search:focus-within {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+
+.counter {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.head {
+  padding: 9px 16px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  transition: opacity 120ms;
+}
+
+.stale {
+  opacity: 0.6;
+}
+
+.groupLabel {
+  padding: 12px 16px 6px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.groupLabel:first-child {
+  border-top: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 16px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+}
+
+.groupLabel + .row {
+  border-top: 0;
+}
+
+.row:hover {
+  background: var(--surface-muted);
+}
+
+.selected,
+.selected:hover {
+  background: var(--surface-selected);
+}
+
+.unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.iconCollege,
+.iconDepartment,
+.iconProgram,
+.iconOffice {
+  flex-shrink: 0;
+}
+
+.iconCollege {
+  color: var(--primary);
+}
+
+.iconDepartment,
+.iconOffice {
+  color: var(--text-muted);
+}
+
+.iconProgram {
+  color: var(--success);
+}
+
+.unitCode {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.unitName {
+  overflow: hidden;
+  font-size: 13px;
+  color: var(--text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colHead {
+  width: 170px;
+}
+
+.colHolds {
+  width: 236px;
+}
+
+.holder {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--text);
+}
+
+.subtle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer a {
+  color: var(--primary);
+}
+
+/* ---- drawer */
+
+.drawerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.drawerScroll a {
+  color: var(--primary);
+}
+
+.addChild {
+  align-self: flex-start;
+}
+
+.blocked {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+.blockedTitle {
+  font-weight: 700;
+  color: var(--warning);
+}
+
+.deleteButton {
+  color: var(--danger);
+}
+
+.deleteButton:disabled {
+  color: var(--text-muted);
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.saved {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.actionError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 18px 12px;
+}
+
+/* ---- delete modal */
+
+.effects {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-body);
+}

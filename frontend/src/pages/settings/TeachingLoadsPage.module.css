@@ -1,0 +1,522 @@
+/* Settings → Teaching loads: the term's load grouped by program, the import guide and the import modal. */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.search:focus-within {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+
+.counter {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.banner {
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.head {
+  padding: 9px 16px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  transition: opacity 120ms;
+}
+
+.stale {
+  opacity: 0.6;
+}
+
+.group + .group {
+  border-top: 1px solid var(--border);
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 16px 6px;
+  border-top: 1px solid var(--border);
+}
+
+.groupCode {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.groupName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.groupMeta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 16px;
+}
+
+.row:hover {
+  background: var(--surface-muted);
+}
+
+.colPerson {
+  flex-shrink: 0;
+  width: 220px;
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.personText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.personName {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.personMeta {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.courses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 3px;
+}
+
+.course {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.courseCode {
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.courseTitle {
+  overflow: hidden;
+  max-width: 200px;
+  color: var(--text-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The load is edited where it shows: a course chip opens it, the + adds one for that person. */
+.courseButton {
+  cursor: pointer;
+}
+
+.courseButton:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.addCourse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-muted);
+}
+
+.addCourse:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.note {
+  margin: 0 16px 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sections {
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---- import guide (right) */
+
+.drawerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.columns {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.column {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.column + .column {
+  border-top: 1px solid var(--border);
+}
+
+.columnName {
+  flex-shrink: 0;
+  width: 92px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.columnNote {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+}
+
+.boxText {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-body);
+}
+
+/* ---- import modal */
+
+.termField {
+  flex-shrink: 0;
+  width: 200px;
+}
+
+.drop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.drop strong {
+  color: var(--primary);
+}
+
+.drop:hover,
+.dropActive {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+}
+
+.stat + .stat {
+  border-left: 1px solid var(--border);
+}
+
+.statValue {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.issues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+
+.issues ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 150px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  color: var(--text-body);
+}
+
+.issuesTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+}
+
+.issueLine {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.warning {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.statValue.danger,
+.statValue.warning,
+.statValue.success {
+  background: none;
+}
+
+.success {
+  color: var(--success);
+}
+
+.same {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+}
+
+.section summary {
+  padding: 8px 12px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.section ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  margin: 0;
+  padding: 0 12px 10px;
+  overflow-y: auto;
+  list-style: none;
+  color: var(--text-body);
+}
+
+/* ---- encode modal */
+
+.picked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.picked .personText {
+  flex: 1;
+}
+
+.people {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.personOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  background: var(--surface);
+  text-align: left;
+}
+
+.personOption + .personOption {
+  border-top: 1px solid var(--border);
+}
+
+.personOption:hover {
+  background: var(--surface-muted);
+}
+
+.peopleEmpty {
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.added {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--success-soft);
+  color: var(--text-body);
+  font-size: 12px;
+}
+
+.addedTitle {
+  font-weight: 700;
+  color: var(--success);
+}
+
+.confirmText {
+  flex: 1;
+  align-self: center;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.removeButton {
+  color: var(--danger);
+}
+
+.sign {
+  display: inline-block;
+  width: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+}

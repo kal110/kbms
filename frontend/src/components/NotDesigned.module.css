@@ -1,0 +1,30 @@
+.box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 56px 24px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  text-align: center;
+}
+
+.icon {
+  display: inline-flex;
+  padding: 12px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.text {
+  max-width: 420px;
+  font-size: 13px;
+  color: var(--text-muted);
+}

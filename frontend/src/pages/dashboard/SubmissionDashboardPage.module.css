@@ -1,0 +1,509 @@
+/* Submissions dashboard · AS (program), Dean (college), VPAF (all colleges) */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  transition: opacity 120ms;
+}
+
+.stale {
+  opacity: 0.6;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.breadcrumb a {
+  color: var(--primary);
+}
+
+.breadcrumb [aria-current] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.titleIcon {
+  color: var(--primary);
+  flex: none;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin-top: -10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---- KPIs: stat tiles, no plot */
+
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.kpisSix {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.kpiValue {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.kpiNote {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.success {
+  color: var(--success);
+}
+
+/* ---- cards */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.cardHead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.cardSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* The breakdown table takes the full width; type, overdue and activity sit in a row below it. */
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.side {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+/* ---- status bar: part-to-whole, 2px surface gap between segments, 4px rounded ends */
+
+.statusBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+}
+
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+
+.barSmall {
+  height: 8px;
+  min-width: 96px;
+}
+
+.barEmpty {
+  flex: 1;
+  border-radius: 4px;
+  background: var(--neutral-soft);
+}
+
+.segment {
+  position: relative;
+  flex-basis: 0;
+  min-width: 4px;
+  background: var(--seg);
+}
+
+.segment:first-child {
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.segment:last-child {
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+/* Hit target taller than the thin mark. */
+.segment::before {
+  position: absolute;
+  inset: -6px 0;
+  content: '';
+}
+
+.tip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 2;
+  display: none;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--text);
+  color: var(--surface);
+  font-size: 12px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.segment:hover .tip {
+  display: block;
+}
+
+/* Status colours: passed the palette validator (CVD and normal-vision separation, light surface). Waiting and
+   Needs revision sit under 3:1 against white, so the legend always shows labels and counts. */
+.approved {
+  --seg: #2e9e5b;
+}
+
+.underReview {
+  --seg: #1c4fa6;
+}
+
+.waiting {
+  --seg: #5b9cf0;
+}
+
+.revision {
+  --seg: #d99a1e;
+}
+
+.rejected {
+  --seg: #c8442f;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-body);
+}
+
+.swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--seg);
+}
+
+.legendValue {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.legendShare {
+  color: var(--text-muted);
+}
+
+/* ---- breakdown table */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table thead th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover > * {
+  background: var(--surface-muted);
+}
+
+.num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.statusCol {
+  width: 22%;
+}
+
+.groupRow th {
+  padding: 8px 16px;
+  background: var(--surface-muted);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.table tbody tr.groupRow:hover > * {
+  background: var(--surface-muted);
+}
+
+.nameCell {
+  min-width: 220px;
+  font-weight: 400;
+}
+
+.drill {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.drill svg {
+  margin-left: 2px;
+  vertical-align: -2px;
+}
+
+.person {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.drill:hover {
+  color: var(--primary);
+}
+
+.code {
+  color: var(--primary);
+}
+
+.lead {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.meter {
+  display: block;
+  width: 100%;
+  min-width: 80px;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--neutral-soft);
+  overflow: hidden;
+}
+
+.meterFill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--primary);
+}
+
+.meterText {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---- side lists */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list > li + li {
+  border-top: 1px solid var(--border);
+}
+
+.typeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 16px;
+}
+
+.typeHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  padding: 10px 16px;
+  color: inherit;
+}
+
+.item > :global(*):last-child {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  align-self: center;
+}
+
+a.item:hover {
+  background: var(--surface-muted);
+}
+
+.itemTitle {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.activity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text-body);
+}
+
+.activity a {
+  color: var(--primary);
+}
+
+@media (width <= 1200px) {
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (width <= 640px) {
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

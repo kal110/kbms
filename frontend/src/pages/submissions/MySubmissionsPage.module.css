@@ -1,0 +1,536 @@
+/* Frame 3 · Faculty portal — my submissions */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  text-align: left;
+}
+
+.stat:hover {
+  border-color: var(--border-strong);
+}
+
+.statActive,
+.statActive:hover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.statLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.valueDefault {
+  color: var(--text);
+}
+
+.valueInfo {
+  color: var(--primary-strong);
+}
+
+.valueWarning {
+  color: var(--warning);
+}
+
+.valueSuccess {
+  color: var(--success);
+}
+
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+/* ---- list */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.headRow,
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.headRow {
+  background: var(--surface-muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.row {
+  width: 100%;
+  padding-block: 12px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+}
+
+.headRow + .row {
+  border-top: 0;
+}
+
+.row:hover {
+  background: var(--surface-muted);
+}
+
+.rowSelected,
+.rowSelected:hover {
+  background: var(--surface-selected);
+}
+
+.colMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.colTerm {
+  flex: 0 0 110px;
+}
+
+.colStatus {
+  display: flex;
+  flex: 0 0 150px;
+}
+
+.rowTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.rowMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.rowTerm {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.filterNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--primary-soft);
+  font-size: 12px;
+  color: var(--primary-strong);
+}
+
+.filterNote + .row {
+  border-top: 1px solid var(--border);
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.emptyTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ---- detail panel */
+
+.detail {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 470px;
+  width: 470px;
+  min-height: 620px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.detailHead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+}
+
+.detailMeta,
+.detailReviewer {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.detailTitle {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.detailStatus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.sectionHint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: left;
+}
+
+.slotWarn {
+  border-color: var(--warning-soft);
+  background: var(--warning-soft);
+}
+
+.slotButton:hover {
+  border-color: var(--border-strong);
+}
+
+.slotButton.slotWarn:hover {
+  border-color: #e8c46a;
+}
+
+.slotText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.slotTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.slotNote {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.slotNoteWarn {
+  font-size: 12px;
+  color: var(--warning);
+}
+
+.slotAction {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  white-space: nowrap;
+}
+
+.slotButton:hover .slotAction,
+.slotButton:focus-visible .slotAction {
+  display: inline-flex;
+}
+
+.iconWarn {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+.iconOk {
+  flex-shrink: 0;
+  color: var(--success);
+}
+
+.iconEmpty {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.comment {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.commentHead {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.commentBody {
+  font-size: 13px;
+}
+
+.timelineItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.timelinePending {
+  color: var(--text-muted);
+}
+
+.dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.dotNeutral {
+  background: var(--neutral);
+}
+
+.dotInfo {
+  background: var(--primary-strong);
+}
+
+.dotWarning {
+  background: var(--warning);
+}
+
+.dotSuccess {
+  background: var(--success);
+}
+
+.dotDanger {
+  background: var(--danger);
+}
+
+.dotPending {
+  background: var(--border-strong);
+}
+
+.flex {
+  flex: 1;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.footerNote {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footerLink {
+  padding: 9px 16px;
+  border-radius: var(--radius-md);
+  background: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.footerLink:hover {
+  background: var(--primary-strong);
+}
+
+/* ---- modals */
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.requiredMark {
+  color: var(--danger);
+}
+
+.formHelp {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.formError {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dropzone strong {
+  color: var(--primary);
+}
+
+.dropzone:hover,
+.dropzoneActive {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.lockedField {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.lockedValue {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lockIcon {
+  color: var(--text-muted);
+}
+
+.previewList {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.previewItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.previewItem + .previewItem {
+  border-top: 1px solid var(--border);
+}
+
+.titleEdit {
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
+.titleEdit:hover {
+  color: var(--primary);
+}
+
+.renameForm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.renameForm input {
+  flex: 1;
+  min-width: 0;
+}
+
+.footerError {
+  padding: 0 18px 10px;
+}

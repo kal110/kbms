@@ -1,0 +1,167 @@
+# KBMS in Docker: PostgreSQL, S3 object storage (RustFS), Qdrant + Ollama for AI search, the API and the web app.
+#
+#   docker compose up -d --build     whole stack → http://localhost:25480 (sign in as admin)
+#   docker compose up -d db s3 qdrant ollama ollama-pull
+#                                    dependencies only, for running the API and Vite on the host
+#   docker compose down              stop; data stays in the db-data and s3-data volumes (add -v to wipe it)
+#
+# Host ports avoid the usual defaults: S3 API http://localhost:25490, RustFS console http://localhost:25491,
+# PostgreSQL localhost:25432, Qdrant dashboard http://localhost:25463/dashboard, Ollama localhost:25434,
+# API reference http://localhost:25480/scalar. The first start downloads the embedding model (bge-m3,
+# about 1.2 GB); until it is there, documents still process and their indexing waits.
+# Every ${KBMS_*} below can be set in a .env file next to this one; see .env.example.
+
+name: kbms
+
+services:
+  db:
+    image: postgres:18.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kbms
+      POSTGRES_USER: ${KBMS_DB_USER:-kbms}
+      POSTGRES_PASSWORD: ${KBMS_DB_PASSWORD:-kbms-dev-password}
+    ports:
+      # Host ports are in a 254xx block (none of the usual defaults), so local installs keep theirs.
+      - "${KBMS_DB_PORT:-25432}:5432"
+    volumes:
+      # PostgreSQL 18 images keep data in a version folder under /var/lib/postgresql.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d kbms"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  s3:
+    # S3-compatible storage (Apache-2.0). MinIO's community edition is archived and no longer ships images.
+    image: rustfs/rustfs:1.0.1
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: ${KBMS_S3_ACCESS_KEY:-kbms}
+      RUSTFS_SECRET_KEY: ${KBMS_S3_SECRET_KEY:-kbms-dev-secret}
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+      # Browsers PUT uploads straight to presigned S3 URLs, so the web origins need CORS here.
+      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:${KBMS_WEB_PORT:-25480},http://localhost:5173,http://localhost:5174
+    ports:
+      - "${KBMS_S3_PORT:-25490}:9000"
+      - "${KBMS_S3_CONSOLE_PORT:-25491}:9001"
+    volumes:
+      - s3-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Vector index (frame 10): one collection per index build behind the "kb_chunks" alias.
+  qdrant:
+    image: qdrant/qdrant:v1.19.2
+    restart: unless-stopped
+    ports:
+      # Loopback only: point payloads carry ACL principals and passage text.
+      - "127.0.0.1:${KBMS_QDRANT_PORT:-25463}:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && printf 'GET /readyz HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  # Embeddings (frame 25) on this machine, through Ollama's OpenAI-compatible /v1/embeddings.
+  ollama:
+    image: ollama/ollama:0.40.4
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${KBMS_OLLAMA_PORT:-25434}:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # One-shot: downloads the embedding model into the ollama volume (a no-op once it is there).
+  ollama-pull:
+    image: ollama/ollama:0.40.4
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${KBMS_EMBEDDING_MODEL:-bge-m3}"]
+    restart: "no"
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      s3:
+        condition: service_healthy
+      # Not ollama-pull: the API starts while the model downloads; indexing catches up after.
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      # Development maps the demo sign-in (POST /api/dev/token), migrates and seeds. For real users set
+      # KBMS_ENVIRONMENT=Production plus Auth__Authority / Auth__Audience for the university IdP.
+      ASPNETCORE_ENVIRONMENT: ${KBMS_ENVIRONMENT:-Development}
+      # Behind nginx: take the client address and scheme from X-Forwarded-* (audit IPs).
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+      ConnectionStrings__Kbms: Host=db;Port=5432;Database=kbms;Username=${KBMS_DB_USER:-kbms};Password=${KBMS_DB_PASSWORD:-kbms-dev-password}
+      Database__MigrateOnStartup: "true"
+      Database__Seed: ${KBMS_SEED:-true}
+      # A Vite dev server on the host may call this API through the web port (VITE_API_BASE_URL=http://localhost:25480).
+      Cors__Origins__0: http://localhost:5173
+      Storage__Provider: S3
+      Storage__S3__ServiceUrl: http://s3:9000
+      # Presigned URLs are signed for the host browsers reach S3 on.
+      Storage__S3__PublicUrl: http://localhost:${KBMS_S3_PORT:-25490}
+      Storage__S3__Bucket: kbms
+      Storage__S3__AccessKey: ${KBMS_S3_ACCESS_KEY:-kbms}
+      Storage__S3__SecretKey: ${KBMS_S3_SECRET_KEY:-kbms-dev-secret}
+      Storage__S3__CreateBucket: "true"
+      # AI (frames 8, 10, 25): chunks embedded by Ollama into Qdrant; answers from Claude, which needs
+      # ANTHROPIC_API_KEY (search and indexing work without it).
+      Ai__Enabled: ${KBMS_AI_ENABLED:-true}
+      Ai__Embedding__Endpoint: http://ollama:11434/v1
+      Ai__Embedding__Model: ${KBMS_EMBEDDING_MODEL:-bge-m3}
+      Ai__Embedding__Dimensions: ${KBMS_EMBEDDING_DIMENSIONS:-1024}
+      Ai__VectorStore__Url: http://qdrant:6333
+      # Collections are named after the alias (kb_docker_v1, …). An API on the host with its own
+      # database may share this Qdrant, so the two must not both build kb_chunks_v1.
+      Ai__VectorStore__CollectionAlias: ${KBMS_COLLECTION_ALIAS:-kb_docker}
+      Ai__Chat__ApiKey: ${ANTHROPIC_API_KEY:-}
+    healthcheck:
+      # The runtime image has no curl; bash's /dev/tcp is enough for GET /health.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 20s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        # Empty: the SPA calls /api on its own origin and nginx proxies it to the api service.
+        VITE_API_BASE_URL: ""
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${KBMS_WEB_PORT:-25480}:80"
+
+volumes:
+  db-data:
+  s3-data:
+  qdrant-data:
+  ollama-data:

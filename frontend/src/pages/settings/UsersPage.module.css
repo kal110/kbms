@@ -1,0 +1,313 @@
+/* Settings → Users & roles: people table + person drawer. */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 280px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.search:focus-within {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+
+.counter {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.head {
+  padding: 9px 16px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  transition: opacity 120ms;
+}
+
+.stale {
+  opacity: 0.6;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 16px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+}
+
+.row:hover {
+  background: var(--surface-muted);
+}
+
+.selected,
+.selected:hover {
+  background: var(--surface-selected);
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.personText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.personName {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inactive .personName {
+  color: var(--text-muted);
+}
+
+.you {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.personMeta {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.colRoles {
+  width: 340px;
+}
+
+.colStatus {
+  width: 92px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---- drawer */
+
+.drawerHead {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.drawerHeadText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.externalId {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  font-size: 11px;
+  color: var(--text);
+}
+
+.drawerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.titleField {
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.profileActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.saved {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.section > :first-child {
+  padding-top: 10px;
+}
+
+.holdings {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  list-style: none;
+}
+
+.holding {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.holding + .holding {
+  border-top: 1px solid var(--border);
+}
+
+.holdingText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.holdingLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.holdingUnit {
+  font-size: 12px;
+  color: var(--text-body);
+}
+
+.holdingNote {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.iconButton {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-muted);
+}
+
+.iconButton:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  color: var(--primary);
+}
+
+.removeButton:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.iconButton:disabled {
+  opacity: 0.35;
+}
+
+.addRole {
+  gap: 8px;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-body);
+}
+
+.addActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.since {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.actionError {
+  padding: 0 18px 12px;
+}

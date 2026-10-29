@@ -1,0 +1,23 @@
+.shell {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  height: 100vh;
+}
+
+/* Every page renders its sections straight into this column (padding 24/28, gap 16). */
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 24px 28px;
+  overflow-y: auto;
+  background: var(--surface-muted);
+}
+
+.loading {
+  padding: 40px 0;
+  color: var(--text-subtle);
+  font-size: 13px;
+  text-align: center;
+}

@@ -1,0 +1,271 @@
+/* Settings → Submission types: table + edit drawer, same layout as Document types. */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 240px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.search:focus-within {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+}
+
+.counter {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.head {
+  padding: 9px 16px;
+}
+
+/* The table and the drawer scroll inside the page instead of being cut off. */
+.rows {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 16px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  text-align: left;
+}
+
+.row:hover {
+  background: var(--surface-muted);
+}
+
+.selected,
+.selected:hover {
+  background: var(--surface-selected);
+}
+
+.name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.typeName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.inactive .typeName {
+  color: var(--text-muted);
+}
+
+.code {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.subtle {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.colStages {
+  width: 190px;
+}
+
+.colLists {
+  width: 130px;
+}
+
+.colUsed {
+  width: 90px;
+}
+
+.colStatus {
+  width: 76px;
+}
+
+/* Approval flow: "Unit head → College Dean" */
+.flow {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.flowStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.flowArrow {
+  color: var(--text-subtle);
+}
+
+.stageHead,
+.stageDean {
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stageHead {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+.stageDean {
+  background: var(--purple-soft);
+  color: var(--purple-accent);
+}
+
+.footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.drawerScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.textarea {
+  resize: vertical;
+  min-height: 56px;
+  font-family: inherit;
+  line-height: 1.4;
+}
+
+.lockedCode {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Stage editor: numbered rows */
+.stages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.stage {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.stageNo {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stageBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.iconButton {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 34px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.iconButton:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.iconButton:disabled {
+  opacity: 0.4;
+}
+
+.addStage {
+  align-self: flex-start;
+  margin-left: 34px;
+}
+
+.saved {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.actionError {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 0 18px 12px;
+}

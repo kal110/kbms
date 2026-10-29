@@ -1,0 +1,261 @@
+/* Building blocks shared by the Settings pages: body row, white cards, tables and the right-hand edit drawer. */
+
+.body {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+  flex: 1;
+  min-height: 0;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.grow {
+  flex: 1;
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-muted);
+}
+
+.th {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.cell {
+  flex-shrink: 0;
+  font-size: 12px;
+  min-width: 0;
+}
+
+.fill {
+  flex: 1;
+  min-width: 0;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.rule {
+  height: 1px;
+  flex-shrink: 0;
+  background: var(--border);
+}
+
+/* Edit drawer (380px, frames 17 and 19) */
+.drawer {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.drawerHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 18px;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.drawerTitle {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.drawerSub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 18px;
+}
+
+.drawerFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--surface-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: 13px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--primary);
+}
+
+.input:disabled {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+}
+
+.inputInvalid,
+.inputInvalid:focus {
+  border-color: var(--danger);
+}
+
+.lockedInput {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.lockedInput svg {
+  color: var(--text-subtle);
+  flex-shrink: 0;
+}
+
+.help {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.warn {
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--warning-soft);
+  color: var(--warning);
+  font-size: 12px;
+}
+
+/* Grey info box inside a drawer ("Used by", "From SIS", "Stats") */
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.boxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.boxLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.toggleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.toggleText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggleTitle {
+  font-weight: 600;
+}
+
+.select {
+  appearance: none;
+  width: 100%;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235C6679' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  font-size: 13px;
+  outline: none;
+}
+
+.select:focus {
+  border-color: var(--primary);
+}
+
+.empty {
+  padding: 28px 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}

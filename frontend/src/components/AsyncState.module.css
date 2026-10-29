@@ -1,0 +1,64 @@
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text-subtle);
+  font-size: 13px;
+}
+
+.compact {
+  justify-content: flex-start;
+  padding: 10px 12px;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.error {
+  justify-content: flex-start;
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: var(--danger);
+}
+
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.detail {
+  color: var(--text-muted);
+}
+
+.inline {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.inline svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}

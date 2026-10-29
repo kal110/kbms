@@ -1,0 +1,653 @@
+/* Frame 18 · Academic Supervisor — required documents */
+
+.topbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: pre;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.body {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
+}
+
+.flex {
+  flex: 1;
+}
+
+.muted12 {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.noCase {
+  text-transform: none;
+}
+
+/* ---- submission types */
+
+.types {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 268px;
+  gap: 2px;
+  padding: 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.typesHead {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.typeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: left;
+}
+
+.typeItem:hover {
+  background: var(--surface-muted);
+}
+
+.typeItemActive,
+.typeItemActive:hover {
+  background: var(--surface-selected);
+}
+
+.typeName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.typeItemActive .typeName {
+  font-weight: 700;
+  color: var(--primary-strong);
+}
+
+.typeSub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.hint {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ---- editor */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.editorHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.editorTitle {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.notice span {
+  flex: 1;
+}
+
+.noticeClose {
+  display: inline-flex;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+
+.versions {
+  display: flex;
+  gap: 10px;
+}
+
+.versionPublished,
+.versionDraft,
+.versionNone {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+}
+
+.versionDraft {
+  border-color: #e8c46a;
+  background: #fdf6e3;
+}
+
+.versionNone {
+  border-style: dashed;
+  background: var(--surface);
+}
+
+.versionText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.versionTitle {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.versionSub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.iconSuccess {
+  flex-shrink: 0;
+  color: var(--success);
+}
+
+.iconWarning {
+  flex-shrink: 0;
+  color: var(--warning);
+}
+
+.iconMuted {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.termSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-muted);
+}
+
+.termSelect select {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.appliesTo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.appliesLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lockedSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.lockedSelect svg {
+  color: var(--text-muted);
+}
+
+/* ---- inherited (read-only) */
+
+.inherited {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 11px 14px;
+  border: 1px solid #d9c8f3;
+  border-radius: var(--radius-lg);
+  background: #f7f3fd;
+}
+
+.inheritedLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--purple-accent);
+}
+
+.inheritedRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inheritedRule {
+  font-size: 12px;
+  color: var(--text-body);
+}
+
+/* ---- requirements table */
+
+.table {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.tableRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.tableHead {
+  padding-block: 9px;
+  border-top: 0;
+  background: var(--surface-muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.rowNew {
+  background: var(--success-faint);
+}
+
+.rowDropTarget {
+  box-shadow: inset 0 2px 0 var(--primary);
+}
+
+.rowDragging {
+  opacity: 0.5;
+}
+
+.gripSpace {
+  flex: 0 0 14px;
+}
+
+.grip {
+  flex-shrink: 0;
+  color: var(--text-subtle);
+  cursor: grab;
+}
+
+.colLabel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+}
+
+button.colLabel:hover .reqLabel {
+  color: var(--primary);
+}
+
+.labelRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+}
+
+.reqLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.reqKey {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.colType {
+  display: flex;
+  align-items: center;
+  flex: 0 0 270px;
+  gap: 6px;
+  min-width: 0;
+}
+
+.colRule {
+  display: flex;
+  flex: 0 0 150px;
+}
+
+.colFiles {
+  flex: 0 0 96px;
+  font-size: 12px;
+}
+
+.filesButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+}
+
+.filesButton:hover {
+  color: var(--primary);
+  text-decoration: underline;
+}
+
+.actionSpace {
+  flex: 0 0 16px;
+}
+
+.removeButton {
+  display: inline-flex;
+  flex: 0 0 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-subtle);
+}
+
+.removeButton:hover {
+  color: var(--danger);
+}
+
+.addRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--primary);
+  text-align: left;
+}
+
+.addRow:hover {
+  background: var(--surface-muted);
+}
+
+.addLabel {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Read-only rows, and controls while a change is saving. */
+.removeButton:disabled,
+.addRow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.colLabel:disabled,
+.filesButton:disabled {
+  cursor: default;
+}
+
+button.colLabel:disabled:hover .reqLabel,
+.filesButton:disabled:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Shown in the breadcrumb when the AS supervises more than one program. */
+.programSelect {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ---- info + changes */
+
+.info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-size: 12px;
+}
+
+.infoIcon {
+  flex-shrink: 0;
+}
+
+.changes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  font-size: 12px;
+}
+
+.change_added {
+  color: var(--success);
+  white-space: pre-wrap;
+}
+
+.change_changed {
+  color: var(--warning);
+  white-space: pre-wrap;
+}
+
+.change_removed {
+  color: var(--danger);
+  white-space: pre-wrap;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---- modals */
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+}
+
+.formRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.formRow > .formField:first-child {
+  flex: 0 0 auto;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.requiredMark {
+  color: var(--danger);
+}
+
+.formHelp {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.formHelpRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.formError {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.previewList {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.previewItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+}
+
+.previewItem + .previewItem {
+  border-top: 1px solid var(--border);
+}
+
+.previewText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.copyList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.copyOption {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.copyOption:hover {
+  background: var(--surface-muted);
+}
+
+.copyOption:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.copyOptionActive,
+.copyOptionActive:hover {
+  border-color: var(--primary);
+  background: var(--surface-selected);
+}
+
+.copyOptionDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
