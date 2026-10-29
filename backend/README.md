@@ -78,6 +78,15 @@ With an NVIDIA GPU, add `-f compose.yaml -f compose.gpu.yaml` to these commands 
 in `.env`) so Ollama runs the embedding and answer models on it. On CPU only, answers from the
 local model take far longer.
 
+### On a server (Dokploy)
+
+Deploy `../compose.yaml` as a Docker Compose service, and paste `../dokploy.env.example`, with its
+secrets and domains filled in, into the Environment tab. Its header lists the Dokploy settings:
+Isolated Deployments, and HTTPS domains for `web` (port 80) and `s3` (port 9000). Browsers upload
+straight to S3, so `KBMS_S3_PUBLIC_URL` must be a public address. The other ports stay on loopback
+(`KBMS_BIND_ADDRESS=127.0.0.1`). Until the university IdP is configured, the server runs the demo
+sign-in, so anyone who can reach it can sign in as any account; keep it private.
+
 ### Signing in during development
 
 There is no IdP yet. `GET /api/dev/users` lists the active people and `POST /api/dev/token`

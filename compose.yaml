@@ -13,7 +13,8 @@
 #
 # With an NVIDIA GPU, add compose.gpu.yaml so Ollama runs the models on it (far faster answers):
 #   docker compose -f compose.yaml -f compose.gpu.yaml up -d --build
-# Every ${KBMS_*} below can be set in a .env file next to this one; see .env.example.
+# Every ${KBMS_*} below can be set in a .env file next to this one; see .env.example. On a server
+# (Dokploy writes its Environment tab to that .env), dokploy.env.example lists what to set.
 
 name: kbms
 
@@ -27,7 +28,7 @@ services:
       POSTGRES_PASSWORD: ${KBMS_DB_PASSWORD:-kbms-dev-password}
     ports:
       # Host ports are in a 254xx block (none of the usual defaults), so local installs keep theirs.
-      - "${KBMS_DB_PORT:-25432}:5432"
+      - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_DB_PORT:-25432}:5432"
     volumes:
       # PostgreSQL 18 images keep data in a version folder under /var/lib/postgresql.
       - db-data:/var/lib/postgresql
@@ -48,10 +49,10 @@ services:
       RUSTFS_CONSOLE_ADDRESS: ":9001"
       RUSTFS_CONSOLE_ENABLE: "true"
       # Browsers PUT uploads straight to presigned S3 URLs, so the web origins need CORS here.
-      RUSTFS_CORS_ALLOWED_ORIGINS: http://localhost:${KBMS_WEB_PORT:-25480},http://localhost:5173,http://localhost:5174
+      RUSTFS_CORS_ALLOWED_ORIGINS: ${KBMS_WEB_URL:-http://localhost:${KBMS_WEB_PORT:-25480}},http://localhost:5173,http://localhost:5174
     ports:
-      - "${KBMS_S3_PORT:-25490}:9000"
-      - "${KBMS_S3_CONSOLE_PORT:-25491}:9001"
+      - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_S3_PORT:-25490}:9000"
+      - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_S3_CONSOLE_PORT:-25491}:9001"
     volumes:
       - s3-data:/data
     healthcheck:
@@ -132,8 +133,13 @@ services:
         condition: service_healthy
     environment:
       # Development maps the demo sign-in (POST /api/dev/token), migrates and seeds. For real users set
-      # KBMS_ENVIRONMENT=Production plus Auth__Authority / Auth__Audience for the university IdP.
+      # KBMS_ENVIRONMENT=Production plus KBMS_AUTH_AUTHORITY (and KBMS_AUTH_AUDIENCE) for the university IdP.
       ASPNETCORE_ENVIRONMENT: ${KBMS_ENVIRONMENT:-Development}
+      Auth__Authority: ${KBMS_AUTH_AUTHORITY:-}
+      Auth__Audience: ${KBMS_AUTH_AUDIENCE:-kbms-api}
+      # Signs the demo sign-in's tokens while there is no Authority. A build from git has no
+      # appsettings.Development.json, so the key comes from here; set your own on a server.
+      Auth__DevSigningKey: ${KBMS_DEV_SIGNING_KEY:-dev-only-signing-key-change-me-0123456789abcdef}
       # Behind nginx: take the client address and scheme from X-Forwarded-* (audit IPs).
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
       ConnectionStrings__Kbms: Host=db;Port=5432;Database=kbms;Username=${KBMS_DB_USER:-kbms};Password=${KBMS_DB_PASSWORD:-kbms-dev-password}
@@ -144,7 +150,7 @@ services:
       Storage__Provider: S3
       Storage__S3__ServiceUrl: http://s3:9000
       # Presigned URLs are signed for the host browsers reach S3 on.
-      Storage__S3__PublicUrl: http://localhost:${KBMS_S3_PORT:-25490}
+      Storage__S3__PublicUrl: ${KBMS_S3_PUBLIC_URL:-http://localhost:${KBMS_S3_PORT:-25490}}
       Storage__S3__Bucket: kbms
       Storage__S3__AccessKey: ${KBMS_S3_ACCESS_KEY:-kbms}
       Storage__S3__SecretKey: ${KBMS_S3_SECRET_KEY:-kbms-dev-secret}
@@ -182,7 +188,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${KBMS_WEB_PORT:-25480}:80"
+      - "${KBMS_BIND_ADDRESS:-0.0.0.0}:${KBMS_WEB_PORT:-25480}:80"
 
 volumes:
   db-data:

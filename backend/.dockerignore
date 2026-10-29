@@ -6,3 +6,5 @@ tests/
 .vscode/
 *.user
 .env
+# Local settings (the developer's database password); compose.yaml passes everything the container needs.
+**/appsettings.Development.json
