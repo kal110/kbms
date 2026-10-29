@@ -406,7 +406,9 @@ function IndexPanel({ status }: { status: IndexingStatus }) {
       {index.chatModel && (
         <div className={styles.kv}>
           <span className={styles.kvKey}>Answers</span>
-          <span className={styles.kvValue}>{index.chatModel}</span>
+          <span className={styles.kvValue}>
+            {index.chatModel} · {index.chatProvider === 'Anthropic' ? 'Anthropic API' : 'local model'}
+          </span>
         </div>
       )}
       <div className={styles.kv}>

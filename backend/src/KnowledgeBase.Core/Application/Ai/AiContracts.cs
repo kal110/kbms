@@ -3,7 +3,8 @@ namespace KnowledgeBase.Core.Application.Ai;
 // Permission-aware AI (frames 5, 8, 10, 25). Ai:Enabled switches on chunking, embedding and the
 // vector index in the processing pipeline, the index worker and /api/knowledge/chat. The providers
 // behind these contracts are swappable: any OpenAI-compatible embeddings endpoint (Ollama, TEI,
-// vLLM, a hosted API), Qdrant for vectors, and Claude for answers.
+// vLLM, a hosted API), Qdrant for vectors, and for answers a local model (Ollama or another
+// OpenAI-compatible server) or Claude.
 
 public sealed class AiOptions
 {
@@ -89,7 +90,53 @@ public sealed class RetrievalOptions
     public int RequestsPerMinute { get; set; } = 20;
 }
 
+/// <summary>Who writes the answers.</summary>
+public enum ChatProvider
+{
+    /// <summary>A model on this machine or network, behind an OpenAI-compatible chat API (Ollama by default).</summary>
+    Local,
+
+    /// <summary>Claude over the Anthropic API; needs an API key.</summary>
+    Anthropic,
+}
+
 public sealed class ChatOptions
+{
+    public ChatProvider Provider { get; set; } = ChatProvider.Local;
+    public LocalChatOptions Local { get; set; } = new();
+    public AnthropicChatOptions Anthropic { get; set; } = new();
+
+    /// <summary>The model of the active provider, as status pages and the audit show it.</summary>
+    public string Model => Provider == ChatProvider.Anthropic ? Anthropic.Model : Local.Model;
+}
+
+public sealed class LocalChatOptions
+{
+    /// <summary>Base URL of an OpenAI-compatible API; POST {Endpoint}/chat/completions. Ollama: http://localhost:11434/v1.</summary>
+    public string Endpoint { get; set; } = "http://localhost:11434/v1";
+    public string? ApiKey { get; set; }
+
+    /// <summary>A small instruct model that fits the GPU. Ollama: pulled into the server first (ollama pull).</summary>
+    public string Model { get; set; } = "qwen3.5:4b";
+    public int MaxTokens { get; set; } = 1500;
+
+    /// <summary>Low, so answers stay close to the passages.</summary>
+    public double Temperature { get; set; } = 0.2;
+
+    /// <summary>
+    /// Sent as reasoning_effort. "none" switches off a thinking model's reasoning, which on a small
+    /// GPU costs more time than it adds to quoting passages. Empty = the server's default.
+    /// </summary>
+    public string? ReasoningEffort { get; set; } = "none";
+
+    /// <summary>
+    /// How long to wait for the answer to start: loading the model and reading the passages. The
+    /// server's context window must hold them (Ollama: OLLAMA_CONTEXT_LENGTH, 16384 in compose.yaml).
+    /// </summary>
+    public int TimeoutSeconds { get; set; } = 300;
+}
+
+public sealed class AnthropicChatOptions
 {
     /// <summary>Claude model id.</summary>
     public string Model { get; set; } = "claude-opus-5-5";
@@ -123,11 +170,17 @@ public interface IChatModel
     IAsyncEnumerable<ChatModelEvent> StreamAsync(string systemPrompt, string userMessage, CancellationToken ct = default);
 }
 
-/// <summary>A text delta while streaming, then one final event with the stop reason and usage.</summary>
+/// <summary>
+/// A text delta while streaming, then one final event with the stop reason and usage. Stop reasons
+/// use Anthropic's names whatever the provider: end_turn, max_tokens, refusal.
+/// </summary>
 public sealed record ChatModelEvent(string? Text, string? StopReason = null, long InputTokens = 0, long OutputTokens = 0, string? Model = null)
 {
     public bool IsFinal => StopReason is not null;
 }
+
+/// <summary>A chat model failure with a message safe to show (no keys, no request content).</summary>
+public sealed class ChatModelException(string message) : Exception(message);
 
 /// <summary>The assistant's two use cases (frame 10): they share one collection but never one filter.</summary>
 public static class KnowledgeScopes

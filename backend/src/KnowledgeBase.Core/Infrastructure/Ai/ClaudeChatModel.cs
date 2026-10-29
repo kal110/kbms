@@ -8,21 +8,22 @@ using Microsoft.Extensions.Options;
 namespace KnowledgeBase.Core.Infrastructure.Ai;
 
 /// <summary>
-/// Answers with Claude over the Messages API, streamed (frame 10, step 9). Thinking is adaptive
-/// (the model default); Ai:Chat:Effort sets how hard it works. A policy decline is retried
-/// server-side on Anthropic's recommended fallback model ("fallbacks": "default"); if the whole
-/// chain declines, the final event says "refusal" and the caller discards the partial answer.
+/// Answers with Claude over the Messages API, streamed (frame 10, step 9), when Ai:Chat:Provider is
+/// Anthropic. Thinking is adaptive (the model default); Ai:Chat:Anthropic:Effort sets how hard it
+/// works. A policy decline is retried server-side on Anthropic's recommended fallback model
+/// ("fallbacks": "default"); if the whole chain declines, the final event says "refusal" and the
+/// caller discards the partial answer.
 /// </summary>
 public sealed class ClaudeChatModel : IChatModel, IDisposable
 {
     public const string FallbackBeta = "server-side-fallback-2026-07-01";
 
     private readonly Lazy<AnthropicClient> client;
-    private readonly ChatOptions options;
+    private readonly AnthropicChatOptions options;
 
     public ClaudeChatModel(IOptions<AiOptions> options)
     {
-        this.options = options.Value.Chat;
+        this.options = options.Value.Chat.Anthropic;
         // No key in config: the SDK reads ANTHROPIC_API_KEY (or an `ant auth login` profile).
         // Created on first use, so a host with AI switched off never needs a key.
         var key = this.options.ApiKey;
@@ -110,7 +111,7 @@ public sealed class ClaudeChatModel : IChatModel, IDisposable
     private static string Describe(AnthropicApiException ex) => ex switch
     {
         AnthropicRateLimitException => "The answer service is busy (rate limited). Try again in a minute.",
-        AnthropicUnauthorizedException => "The answer service rejected the API key (Ai:Chat:ApiKey or ANTHROPIC_API_KEY).",
+        AnthropicUnauthorizedException => "The answer service rejected the API key (Ai:Chat:Anthropic:ApiKey or ANTHROPIC_API_KEY).",
         Anthropic5xxException => "The answer service had a temporary error. Try again.",
         _ => $"The answer service rejected the request ({ex.GetType().Name}).",
     };
@@ -120,5 +121,3 @@ public sealed class ClaudeChatModel : IChatModel, IDisposable
         if (client.IsValueCreated) client.Value.Dispose();
     }
 }
-
-public sealed class ChatModelException(string message) : Exception(message);

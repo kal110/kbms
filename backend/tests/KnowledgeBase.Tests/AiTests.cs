@@ -7,6 +7,7 @@ using KnowledgeBase.Core.Application.Ai;
 using KnowledgeBase.Core.Domain.Processing;
 using KnowledgeBase.Core.Infrastructure.Ai;
 using KnowledgeBase.Core.Infrastructure.Processing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using UglyToad.PdfPig.Content;
 using UglyToad.PdfPig.Core;
@@ -405,6 +406,107 @@ public class AiTests
         Assert.True(error.Permanent);
     }
 
+    // ---- Local chat model -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Local_answers_stream_text_and_end_with_the_stop_reason_and_usage()
+    {
+        string? sent = null;
+        var handler = new FakeHandler(request =>
+        {
+            sent = request;
+            return """
+                data: {"model":"qwen3.5:4b","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"Passage 1 says"},"finish_reason":null}]}
+
+                data: {"model":"qwen3.5:4b","choices":[{"index":0,"delta":{"content":"Late work loses 10%"},"finish_reason":null}]}
+
+                data: {"model":"qwen3.5:4b","choices":[{"index":0,"delta":{"content":" [1]."},"finish_reason":null}]}
+
+                data: {"model":"qwen3.5:4b","choices":[{"index":0,"delta":{},"finish_reason":"length"}]}
+
+                data: {"model":"qwen3.5:4b","choices":[],"usage":{"prompt_tokens":812,"completion_tokens":9}}
+
+                data: [DONE]
+
+
+                """;
+        }, "text/event-stream");
+        var chat = new OpenAiCompatibleChatModel(new HttpClient(handler),
+            Options.Create(new AiOptions { Chat = { Local = { Model = "qwen3.5:4b", MaxTokens = 700, ReasoningEffort = "none" } } }));
+
+        var events = new List<ChatModelEvent>();
+        await foreach (var e in chat.StreamAsync("system", "question")) events.Add(e);
+
+        // The reasoning delta is not part of the answer.
+        Assert.Equal(["Late work loses 10%", " [1]."], events.Where(e => !e.IsFinal).Select(e => e.Text));
+        var final = Assert.Single(events, e => e.IsFinal);
+        Assert.Equal(("max_tokens", 812L, 9L, "qwen3.5:4b"), (final.StopReason, final.InputTokens, final.OutputTokens, final.Model));
+
+        var body = JsonNode.Parse(sent!)!;
+        Assert.Equal(["system", "user"], body["messages"]!.AsArray().Select(m => (string)m!["role"]!));
+        Assert.Equal(("none", 700, true, true), ((string?)body["reasoning_effort"], (int)body["max_tokens"]!, (bool)body["stream"]!, (bool)body["stream_options"]!["include_usage"]!));
+    }
+
+    [Fact]
+    public async Task A_missing_local_model_says_to_pull_it()
+    {
+        var handler = new FakeHandler(_ => """{"error":{"message":"model 'qwen3.5:4b' not found"}}""", status: HttpStatusCode.NotFound);
+        var chat = new OpenAiCompatibleChatModel(new HttpClient(handler), Options.Create(new AiOptions()));
+
+        var error = await Assert.ThrowsAsync<ChatModelException>(async () =>
+        {
+            await foreach (var _ in chat.StreamAsync("system", "question")) { }
+        });
+
+        Assert.Contains("ollama pull qwen3.5:4b", error.Message);
+    }
+
+    [Fact]
+    public async Task An_error_mid_stream_fails_the_answer_without_echoing_the_server()
+    {
+        var handler = new FakeHandler(_ => """
+            data: {"choices":[{"index":0,"delta":{"content":"Late"},"finish_reason":null}]}
+
+            data: {"error":{"message":"runner stopped while reading <passages>…"}}
+
+
+            """, "text/event-stream");
+        var chat = new OpenAiCompatibleChatModel(new HttpClient(handler), Options.Create(new AiOptions()));
+
+        var texts = new List<string?>();
+        var error = await Assert.ThrowsAsync<ChatModelException>(async () =>
+        {
+            await foreach (var e in chat.StreamAsync("system", "question")) texts.Add(e.Text);
+        });
+
+        Assert.Equal(["Late"], texts);
+        Assert.DoesNotContain("passages", error.Message);
+    }
+
+    [Theory]
+    [InlineData("stop", "end_turn")]
+    [InlineData("length", "max_tokens")]
+    [InlineData("content_filter", "refusal")]
+    [InlineData(null, "end_turn")]
+    public void Local_finish_reasons_use_the_assistant_stop_reasons(string? finishReason, string stopReason) =>
+        Assert.Equal(stopReason, OpenAiCompatibleChatModel.StopReason(finishReason));
+
+    [Theory]
+    [InlineData(ChatProvider.Local, typeof(OpenAiCompatibleChatModel), "qwen3.5:4b")]
+    [InlineData(ChatProvider.Anthropic, typeof(ClaudeChatModel), "claude-opus-5-5")]
+    public void The_chat_provider_picks_the_client_and_the_model_shown_on_status_pages(ChatProvider provider, Type client, string model)
+    {
+        var services = new ServiceCollection().AddAiModule();
+        services.Configure<AiOptions>(o => o.Chat.Provider = provider);
+        using var sp = services.BuildServiceProvider();
+
+        var chat = sp.GetRequiredService<IChatModel>();
+
+        Assert.IsType(client, chat);
+        Assert.Equal(model, chat.ModelId);
+        Assert.Equal(model, sp.GetRequiredService<IOptions<AiOptions>>().Value.Chat.Model);
+    }
+
     // ---- Pipeline -------------------------------------------------------------------------------
 
     [Fact]
@@ -531,7 +633,7 @@ public class AiTests
         return count;
     }
 
-    private sealed class FakeHandler(Func<string, string> respond) : HttpMessageHandler
+    private sealed class FakeHandler(Func<string, string> respond, string mediaType = "application/json", HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
     {
         public int Requests { get; private set; }
 
@@ -539,7 +641,7 @@ public class AiTests
         {
             Requests++;
             var body = await request.Content!.ReadAsStringAsync(ct);
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(respond(body), Encoding.UTF8, "application/json") };
+            return new HttpResponseMessage(status) { Content = new StringContent(respond(body), Encoding.UTF8, mediaType) };
         }
     }
 

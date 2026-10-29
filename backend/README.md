@@ -23,7 +23,7 @@ backend/
 | `Application/` | One folder per module (Org, Settings, Requirements, Library, Access, Workflow, Admin). Services enforce authorization themselves, so every host gets the same rules |
 | `Application/Abstractions/Contracts.cs` | Cross-module contracts (`IAccessEvaluator`, `IAcademicFolderService`, `IDocumentFactory`, `IRequirementResolver`, `IProcessingPipeline`, `IAuditWriter`, `IOutbox`) |
 | `Application/Ai/` | AI contracts (`IEmbeddingProvider`, `IChatModel`, `IVectorIndex`), options, retrieval (`KnowledgeRetriever`) and the assistant (`AssistantService`) |
-| `Infrastructure/Ai/` | Text extraction, chunking, BM25 sparse vectors, the Ollama/OpenAI-compatible embeddings client, Qdrant, Claude, and the search index worker |
+| `Infrastructure/Ai/` | Text extraction, chunking, BM25 sparse vectors, the Ollama/OpenAI-compatible embeddings and chat clients, Qdrant, Claude, and the search index worker |
 | `Infrastructure/Persistence/` | EF Core + PostgreSQL (snake_case, xmin concurrency, partial unique indexes, tsvector search, triggers), seed data |
 | `Infrastructure/Storage/` | `IObjectStorage`: S3-compatible storage with presigned URLs, or a local disk store that issues the same kind of signed, expiring URLs |
 | `Infrastructure/Processing/` | Processing pipeline worker, outbox dispatcher, housekeeping |
@@ -74,6 +74,10 @@ edition is archived), Qdrant and Ollama for AI search, this API and the web app.
   dotnet run --project src/KnowledgeBase.Api
   ```
 
+With an NVIDIA GPU, add `-f compose.yaml -f compose.gpu.yaml` to these commands (or set `COMPOSE_FILE`
+in `.env`) so Ollama runs the embedding and answer models on it. On CPU only, answers from the
+local model take far longer.
+
 ### Signing in during development
 
 There is no IdP yet. `GET /api/dev/users` lists the active people and `POST /api/dev/token`
@@ -115,7 +119,10 @@ not mapped and the token's `sub` must match `users.external_id`.
 | `Ai:VectorStore:Url`, `ApiKey`, `CollectionAlias` | `http://localhost:6333` (Development: 25463, the Docker Qdrant), empty, `kb_chunks` | Qdrant |
 | `Ai:Chunking:*` | 500 / 800 / 80 / 120 tokens | Target, ceiling, overlap, minimum. Bump `Processing:PipelineVersion` after changing them |
 | `Ai:Retrieval:*` | 40 candidates, 8 passages (3 per document), `MinScore` 0.45, `MinPassageScore` 0.40, 20 questions/minute | Below `MinScore` the answer is "not enough evidence" and the model isn't called |
-| `Ai:Chat:Model`, `ApiKey`, `MaxTokens`, `Effort` | `claude-opus-5-5`, empty, 16000, `medium` | Empty key = the `ANTHROPIC_API_KEY` environment variable |
+| `Ai:Chat:Provider` | `Local` | Who answers: `Local` (an OpenAI-compatible chat server, Ollama by default) or `Anthropic` (Claude) |
+| `Ai:Chat:Local:Endpoint`, `Model`, `ApiKey` | `http://localhost:11434/v1` (Development: 25434, the Docker Ollama), `qwen3.5:4b`, empty | Any OpenAI-compatible `/chat/completions` that streams: Ollama, vLLM, LM Studio, llama.cpp's `llama-server`. With Ollama, the model must be pulled first |
+| `Ai:Chat:Local:MaxTokens`, `Temperature`, `ReasoningEffort`, `TimeoutSeconds` | 1500, 0.2, `none`, 300 | `none` turns off a thinking model's reasoning (empty = the server's default). The timeout covers loading the model and reading the passages, up to the first token |
+| `Ai:Chat:Anthropic:Model`, `ApiKey`, `MaxTokens`, `Effort` | `claude-opus-5-5`, empty, 16000, `medium` | Empty key = the `ANTHROPIC_API_KEY` environment variable |
 | `Ai:Audit:KeepText` | `false` | Keep question and answer text in `ai_query_audits` (ids, scores and outcome are always kept) |
 | `Processing:PipelineVersion` | `1` | Keys the extraction and chunk checkpoints; bumping it re-derives and re-indexes every version |
 | `Database:MigrateOnStartup`, `Database:Seed` | `false` (`true` in Development) | Apply migrations and seed on startup |
@@ -188,7 +195,13 @@ indexed passages with citations.
 |---|---|
 | Ollama with `bge-m3` | Dense embeddings (1024 dims) through the OpenAI-compatible `/v1/embeddings` |
 | Qdrant | Hybrid index: dense + BM25 sparse vectors in `kb_chunks_v{n}`, searched through the alias `kb_chunks` |
-| Claude (`claude-opus-5-5`) | Answers. Needs `ANTHROPIC_API_KEY` (or `Ai:Chat:ApiKey`); without it chat streams the sources, then an error event |
+| Ollama with `qwen3.5:4b` | Answers, by default (`Ai:Chat:Provider=Local`), through `/v1/chat/completions`. Nothing leaves the machine. Ollama's context window must hold the passages: compose.yaml sets `OLLAMA_CONTEXT_LENGTH=16384`, because the OpenAI API can't set it per request and Ollama's default (4096) would cut passages silently |
+| Claude (`claude-opus-5-5`) | Answers instead, with `Ai:Chat:Provider=Anthropic`. Needs `ANTHROPIC_API_KEY` (or `Ai:Chat:Anthropic:ApiKey`); without it chat streams the sources, then an error event |
+
+A small local model handles prose well, and in Filipino too, but it is weaker than Claude at lining up
+values in tables, especially tables that were extracted column by column. Choose the model by GPU
+memory, which it shares with `bge-m3`: `qwen3.5:4b` for about 6 GB, `qwen3.5:2b` for less,
+`qwen3.5:9b` with 12 GB or more.
 
 **Ingestion** (`DocumentProcessor`, `Infrastructure/Ai`):
 
@@ -220,7 +233,9 @@ year and term filters. Every hit from Qdrant is checked again against PostgreSQL
 it is shown or sent to the model. When the best passage scores under `Ai:Retrieval:MinScore`, the
 answer is "not enough evidence" and the model isn't called; an answer without valid citations is
 treated the same way. Each question writes an `ai_query_audits` row, and requests are limited per
-user (429 `rate-limited` with `Retry-After`).
+user (429 `rate-limited` with `Retry-After`). In Docker, nginx passes the chat stream on unbuffered
+and waits up to 6 minutes for it, longer than its 60-second default, because a local model that has
+to load first can stay silent for a while after the `sources` event.
 
 ## What is designed but not built yet
 

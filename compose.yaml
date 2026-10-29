@@ -8,7 +8,11 @@
 # Host ports avoid the usual defaults: S3 API http://localhost:25490, RustFS console http://localhost:25491,
 # PostgreSQL localhost:25432, Qdrant dashboard http://localhost:25463/dashboard, Ollama localhost:25434,
 # API reference http://localhost:25480/scalar. The first start downloads the embedding model (bge-m3,
-# about 1.2 GB); until it is there, documents still process and their indexing waits.
+# about 1.2 GB) and the local answer model (qwen3.5:4b, about 3.3 GB); until they are there, documents
+# still process and their indexing waits, and the assistant says its model isn't there yet.
+#
+# With an NVIDIA GPU, add compose.gpu.yaml so Ollama runs the models on it (far faster answers):
+#   docker compose -f compose.yaml -f compose.gpu.yaml up -d --build
 # Every ${KBMS_*} below can be set in a .env file next to this one; see .env.example.
 
 name: kbms
@@ -71,10 +75,15 @@ services:
       timeout: 5s
       retries: 12
 
-  # Embeddings (frame 25) on this machine, through Ollama's OpenAI-compatible /v1/embeddings.
+  # Embeddings (frame 25) and the assistant's answers on this machine, through Ollama's
+  # OpenAI-compatible /v1/embeddings and /v1/chat/completions.
   ollama:
     image: ollama/ollama:0.40.4
     restart: unless-stopped
+    environment:
+      # The OpenAI API can't set a context window per request. Eight 800-token passages plus the
+      # answer need more than Ollama's 4096 default, or the oldest passages are cut silently.
+      OLLAMA_CONTEXT_LENGTH: ${KBMS_OLLAMA_CONTEXT_LENGTH:-16384}
     ports:
       - "127.0.0.1:${KBMS_OLLAMA_PORT:-25434}:11434"
     volumes:
@@ -85,7 +94,8 @@ services:
       timeout: 5s
       retries: 12
 
-  # One-shot: downloads the embedding model into the ollama volume (a no-op once it is there).
+  # One-shot: downloads the embedding model, and the answer model unless Claude answers, into the
+  # ollama volume (a no-op once they are there).
   ollama-pull:
     image: ollama/ollama:0.40.4
     depends_on:
@@ -93,7 +103,18 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["ollama", "pull", "${KBMS_EMBEDDING_MODEL:-bge-m3}"]
+      EMBEDDING_MODEL: ${KBMS_EMBEDDING_MODEL:-bge-m3}
+      CHAT_PROVIDER: ${KBMS_CHAT_PROVIDER:-Local}
+      CHAT_MODEL: ${KBMS_CHAT_MODEL:-qwen3.5:4b}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        ollama pull "$$EMBEDDING_MODEL" || exit 1
+        case "$$CHAT_PROVIDER" in
+          [Aa]nthropic) ;;
+          *) ollama pull "$$CHAT_MODEL" ;;
+        esac
     restart: "no"
 
   api:
@@ -128,8 +149,8 @@ services:
       Storage__S3__AccessKey: ${KBMS_S3_ACCESS_KEY:-kbms}
       Storage__S3__SecretKey: ${KBMS_S3_SECRET_KEY:-kbms-dev-secret}
       Storage__S3__CreateBucket: "true"
-      # AI (frames 8, 10, 25): chunks embedded by Ollama into Qdrant; answers from Claude, which needs
-      # ANTHROPIC_API_KEY (search and indexing work without it).
+      # AI (frames 8, 10, 25): chunks embedded by Ollama into Qdrant; answers from the local model in
+      # Ollama, or from Claude with KBMS_CHAT_PROVIDER=Anthropic and ANTHROPIC_API_KEY.
       Ai__Enabled: ${KBMS_AI_ENABLED:-true}
       Ai__Embedding__Endpoint: http://ollama:11434/v1
       Ai__Embedding__Model: ${KBMS_EMBEDDING_MODEL:-bge-m3}
@@ -138,7 +159,10 @@ services:
       # Collections are named after the alias (kb_docker_v1, …). An API on the host with its own
       # database may share this Qdrant, so the two must not both build kb_chunks_v1.
       Ai__VectorStore__CollectionAlias: ${KBMS_COLLECTION_ALIAS:-kb_docker}
-      Ai__Chat__ApiKey: ${ANTHROPIC_API_KEY:-}
+      Ai__Chat__Provider: ${KBMS_CHAT_PROVIDER:-Local}
+      Ai__Chat__Local__Endpoint: http://ollama:11434/v1
+      Ai__Chat__Local__Model: ${KBMS_CHAT_MODEL:-qwen3.5:4b}
+      Ai__Chat__Anthropic__ApiKey: ${ANTHROPIC_API_KEY:-}
     healthcheck:
       # The runtime image has no curl; bash's /dev/tcp is enough for GET /health.
       test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /health HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q ' 200 ' <&3"]

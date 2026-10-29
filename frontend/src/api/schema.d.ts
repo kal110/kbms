@@ -5144,6 +5144,8 @@ export interface components {
             ipAddress: null | string;
             metadata: null | components["schemas"]["JsonElement"];
         };
+        /** @enum {unknown} */
+        ChatProvider: "Local" | "Anthropic";
         ChatRequest: {
             question: string;
             scope?: null | string;
@@ -6236,6 +6238,7 @@ export interface components {
             /** Format: int32 */
             embeddingDimensions: number;
             chatModel: null | string;
+            chatProvider: components["schemas"]["ChatProvider"];
             activeBuild: null | components["schemas"]["IndexBuildRow"];
             lastBuild: null | components["schemas"]["IndexBuildRow"];
             /** Format: int32 */
